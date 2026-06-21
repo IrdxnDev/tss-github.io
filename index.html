@@ -1,0 +1,1859 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Train Spotting Site</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        /* ===== ОСТРЫЙ, АГРЕССИВНЫЙ ДИЗАЙН ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Segoe UI', 'Impact', system-ui, sans-serif; 
+            background: #07050e; 
+            color: #d4c8f0; 
+            line-height: 1.5; 
+            -webkit-tap-highlight-color: transparent;
+            background-image: 
+                radial-gradient(ellipse at 20% 50%, rgba(80, 20, 160, 0.15) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(120, 40, 200, 0.10) 0%, transparent 50%),
+                repeating-linear-gradient(45deg, transparent, transparent 100px, rgba(60, 20, 120, 0.03) 100px, rgba(60, 20, 120, 0.03) 101px);
+            min-height: 100vh;
+        }
+        
+        /* ===== ОСТРЫЙ ХЕДЕР ===== */
+        .header { 
+            background: #0a0715; 
+            border-bottom: 3px solid #6b2fd0; 
+            padding: 0.5rem 0.8rem; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            flex-wrap: wrap; 
+            gap: 6px; 
+            position: sticky; 
+            top: 0; 
+            z-index: 100; 
+            box-shadow: 0 0 30px rgba(107, 47, 208, 0.3), inset 0 -2px 20px rgba(107, 47, 208, 0.1);
+            clip-path: polygon(0 0, 100% 0, 100% 100%, 0 calc(100% - 4px));
+        }
+        .logo-area { display: flex; align-items: center; gap: 8px; cursor: pointer; flex-shrink: 0; }
+        .logo { font-size: 1.5rem; color: #a86eff; filter: drop-shadow(0 0 10px #6b2fd0); }
+        .site-title { 
+            font-size: 0.95rem; 
+            font-weight: 900; 
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, #d4c8f0, #a86eff, #6b2fd0); 
+            -webkit-background-clip: text; 
+            background-clip: text; 
+            color: transparent; 
+            text-shadow: 0 0 30px rgba(107, 47, 208, 0.5);
+            text-transform: uppercase;
+        }
+        .menu-btn { 
+            background: transparent; 
+            border: 2px solid #6b2fd0; 
+            font-size: 1rem; 
+            cursor: pointer; 
+            color: #a86eff; 
+            padding: 4px 12px; 
+            border-radius: 0; 
+            position: relative; 
+            transition: 0.2s; 
+            flex-shrink: 0; 
+            clip-path: polygon(0 0, 100% 0, 95% 100%, 0 100%);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .menu-btn:active { background: #6b2fd0; color: #000; transform: scale(0.95); }
+        .menu-btn:hover { background: rgba(107, 47, 208, 0.2); }
+        .notif-badge { 
+            position: absolute; 
+            top: -6px; 
+            right: -6px; 
+            background: #ff0040; 
+            color: white; 
+            border-radius: 0; 
+            padding: 1px 7px; 
+            font-size: 0.5rem; 
+            font-weight: 900; 
+            min-width: 18px; 
+            text-align: center; 
+            clip-path: polygon(0 0, 100% 0, 100% 70%, 70% 100%, 0 100%);
+            box-shadow: 0 0 15px rgba(255, 0, 64, 0.6);
+        }
+        .user-info { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.75rem; }
+        .user-info > span { display: flex; align-items: center; gap: 4px; }
+        .admin-badge { background: #ff0040; padding: 2px 10px; border-radius: 0; font-size: 0.5rem; font-weight: 900; color: #fff; clip-path: polygon(0 0, 100% 0, 90% 100%, 0 100%); }
+        .moder-badge { background: #6b2fd0; padding: 2px 10px; border-radius: 0; font-size: 0.5rem; font-weight: 900; color: #fff; clip-path: polygon(0 0, 100% 0, 90% 100%, 0 100%); }
+        .banned-badge { background: #333; padding: 2px 10px; border-radius: 0; font-size: 0.5rem; font-weight: 900; color: #888; clip-path: polygon(0 0, 100% 0, 90% 100%, 0 100%); }
+        
+        /* ===== ОСТРОЕ МЕНЮ ===== */
+        .side-menu { 
+            position: fixed; 
+            top: 0; 
+            right: -100%; 
+            width: 85%; 
+            max-width: 300px; 
+            height: 100%; 
+            background: #0a0715; 
+            border-left: 3px solid #6b2fd0; 
+            transition: 0.3s ease; 
+            z-index: 200; 
+            padding: 16px; 
+            overflow-y: auto; 
+            box-shadow: -10px 0 50px rgba(107, 47, 208, 0.3);
+        }
+        .side-menu.open { right: 0; }
+        .menu-header { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 16px; 
+            font-weight: 900; 
+            color: #a86eff; 
+            border-bottom: 2px solid #6b2fd0; 
+            padding-bottom: 8px; 
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .menu-list { list-style: none; }
+        .menu-list li { 
+            padding: 12px 0 12px 6px; 
+            border-bottom: 1px solid rgba(107, 47, 208, 0.2); 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            transition: 0.2s; 
+            border-radius: 0; 
+            font-size: 0.85rem; 
+            color: #d4c8f0; 
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            clip-path: polygon(0 0, 100% 0, 98% 100%, 0 100%);
+        }
+        .menu-list li i { width: 24px; color: #a86eff; font-size: 1rem; }
+        .menu-list li:active { color: #fff; background: rgba(107, 47, 208, 0.2); border-left: 3px solid #a86eff; padding-left: 10px; }
+        
+        /* ===== ОСТРЫЕ КОНТЕЙНЕРЫ ===== */
+        .container { max-width: 100%; margin: 8px auto; padding: 0 8px; }
+        .section { 
+            background: #0d0a1a; 
+            border-radius: 0; 
+            padding: 14px; 
+            margin-bottom: 12px; 
+            border: 2px solid #3a1a6a; 
+            clip-path: polygon(0 0, 100% 0, 98% 100%, 2% 100%);
+            box-shadow: 0 0 25px rgba(107, 47, 208, 0.15), inset 0 0 40px rgba(107, 47, 208, 0.05);
+            position: relative;
+        }
+        .section::before {
+            content: '';
+            position: absolute;
+            top: -1px; left: 10%;
+            width: 30%; height: 2px;
+            background: linear-gradient(90deg, transparent, #a86eff, transparent);
+            filter: blur(2px);
+        }
+        h2, h3 { 
+            margin-bottom: 12px; 
+            font-weight: 900; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            border-left: 4px solid #a86eff; 
+            padding-left: 12px; 
+            font-size: 1rem; 
+            color: #d4c8f0; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 20px rgba(168, 110, 255, 0.3);
+        }
+        .main-two-columns { display: flex; flex-direction: column; gap: 12px; }
+        .main-center { width: 100%; }
+        .main-sidebar { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+        .side-block { 
+            background: #0d0a1a; 
+            border-radius: 0; 
+            padding: 12px; 
+            border: 2px solid #3a1a6a; 
+            clip-path: polygon(0 0, 100% 0, 96% 100%, 0 100%);
+        }
+        .side-block h4 { 
+            margin-bottom: 8px; 
+            font-size: 0.85rem; 
+            display: flex; 
+            align-items: center; 
+            gap: 6px; 
+            color: #a86eff; 
+            border-left: 3px solid #a86eff; 
+            padding-left: 10px; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 800;
+        }
+        
+        /* ===== ОСТРЫЕ КАРТОЧКИ ===== */
+        .photo-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+        .photo-card { 
+            background: #0d0a1a; 
+            border-radius: 0; 
+            overflow: hidden; 
+            border: 2px solid #3a1a6a; 
+            transition: 0.2s; 
+            cursor: pointer; 
+            position: relative; 
+            clip-path: polygon(0 0, 100% 0, 98% 100%, 0 100%);
+            box-shadow: 0 0 20px rgba(107, 47, 208, 0.1);
+        }
+        .photo-card:active { transform: scale(0.97); border-color: #a86eff; }
+        .photo-card:hover { border-color: #6b2fd0; box-shadow: 0 0 30px rgba(107, 47, 208, 0.2); }
+        .photo-card img { width: 100%; height: 180px; object-fit: cover; background: #0a0715; border-bottom: 2px solid #3a1a6a; }
+        .photo-info { padding: 12px; }
+        .vehicle-name { 
+            font-weight: 900; 
+            font-size: 0.95rem; 
+            cursor: pointer; 
+            color: #a86eff; 
+            display: inline-block; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 15px rgba(168, 110, 255, 0.3);
+        }
+        .status-badge { 
+            position: absolute; 
+            top: 8px; 
+            right: 8px; 
+            padding: 3px 10px; 
+            border-radius: 0; 
+            font-size: 0.55rem; 
+            font-weight: 900; 
+            background: rgba(0,0,0,0.9); 
+            backdrop-filter: blur(4px); 
+            -webkit-backdrop-filter: blur(4px); 
+            clip-path: polygon(0 0, 100% 0, 90% 100%, 0 100%);
+            border-left: 2px solid;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .badge-approved { background: #00cc66; color: #000; border-left-color: #00ff88; box-shadow: 0 0 20px rgba(0, 204, 102, 0.3); }
+        .badge-conditional { background: #8e44ad; color: #fff; border-left-color: #a86eff; }
+        .badge-pending { background: #e67e22; color: #fff; border-left-color: #f39c12; }
+        .badge-rejected { background: #e74c3c; color: #fff; border-left-color: #ff0040; }
+        
+        .photo-stats { display: flex; gap: 12px; margin-top: 6px; font-size: 0.65rem; color: #8870aa; flex-wrap: wrap; font-weight: 600; }
+        .vote-buttons { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+        .vote-btn { 
+            background: rgba(20, 10, 40, 0.9); 
+            border: 2px solid #3a1a6a; 
+            cursor: pointer; 
+            font-size: 0.75rem; 
+            padding: 4px 14px; 
+            border-radius: 0; 
+            transition: 0.15s; 
+            font-weight: 700; 
+            touch-action: manipulation; 
+            clip-path: polygon(0 0, 100% 0, 90% 100%, 0 100%);
+            color: #d4c8f0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .vote-up { color: #00cc66; }
+        .vote-up:active { background: #00cc66; color: #000; }
+        .vote-down { color: #ff0040; }
+        .vote-down:active { background: #ff0040; color: #fff; }
+        .vote-active-up { background: #00cc66; color: #000; border-color: #00cc66; }
+        .vote-active-down { background: #ff0040; color: #fff; border-color: #ff0040; }
+        
+        /* ===== ОСТРЫЕ ФОРМЫ ===== */
+        .form-group { margin-bottom: 12px; }
+        .form-group label { font-size: 0.8rem; display: block; margin-bottom: 4px; color: #8870aa; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+        .form-group input, .form-group textarea, .form-group select { 
+            width: 100%; 
+            padding: 10px 14px; 
+            background: #0a0715; 
+            border: 2px solid #3a1a6a; 
+            border-radius: 0; 
+            color: #d4c8f0; 
+            transition: 0.2s; 
+            font-size: 0.9rem; 
+            -webkit-appearance: none; 
+            appearance: none; 
+            clip-path: polygon(0 0, 100% 0, 98% 100%, 0 100%);
+            font-weight: 500;
+        }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { 
+            outline: none; 
+            border-color: #a86eff; 
+            box-shadow: 0 0 25px rgba(168, 110, 255, 0.2), inset 0 0 25px rgba(168, 110, 255, 0.05);
+        }
+        
+        /* ===== ОСТРЫЕ КНОПКИ ===== */
+        button, .btn { 
+            background: #0d0a1a; 
+            color: #a86eff; 
+            border: 2px solid #3a1a6a; 
+            padding: 6px 16px; 
+            border-radius: 0; 
+            cursor: pointer; 
+            font-size: 0.8rem; 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 8px; 
+            transition: 0.15s; 
+            touch-action: manipulation; 
+            min-height: 38px; 
+            justify-content: center; 
+            clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        button:active, .btn:active { transform: scale(0.95); background: #6b2fd0; color: #000; }
+        .btn-success { background: #0a1a10; border-color: #00cc66; color: #00cc66; }
+        .btn-success:active { background: #00cc66; color: #000; }
+        .btn-danger { background: #1a0a0a; border-color: #ff0040; color: #ff0040; }
+        .btn-danger:active { background: #ff0040; color: #fff; }
+        .btn-warning { background: #1a100a; border-color: #e67e22; color: #e67e22; }
+        .btn-warning:active { background: #e67e22; color: #000; }
+        .btn-primary { background: #0a0a1a; border-color: #a86eff; color: #a86eff; }
+        .btn-purple { background: #1a0a2a; border-color: #9b59b6; color: #9b59b6; }
+        .btn-purple:active { background: #9b59b6; color: #000; }
+        .btn-gold { background: #1a1a0a; border-color: #f1c40f; color: #f1c40f; }
+        .btn-gold:active { background: #f1c40f; color: #000; }
+        
+        /* ===== ФИЛЬТРЫ ===== */
+        .filter-chip { 
+            background: #0d0a1a; 
+            padding: 5px 14px; 
+            border-radius: 0; 
+            border: 2px solid #3a1a6a; 
+            cursor: pointer; 
+            font-size: 0.65rem; 
+            transition: 0.2s; 
+            touch-action: manipulation; 
+            clip-path: polygon(0 0, 100% 0, 90% 100%, 0 100%);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #d4c8f0;
+        }
+        .filter-chip:active { transform: scale(0.95); background: #a86eff; color: #000; border-color: #a86eff; }
+        .filter-chip.active { background: #a86eff; color: #000; border-color: #a86eff; }
+        
+        /* ===== СТАТИСТИКА ===== */
+        .stat-card { 
+            background: #0d0a1a; 
+            padding: 10px 14px; 
+            border-radius: 0; 
+            border: 2px solid #a86eff; 
+            text-align: center; 
+            flex: 1; 
+            min-width: 60px; 
+            clip-path: polygon(0 0, 100% 0, 96% 100%, 0 100%);
+            box-shadow: 0 0 20px rgba(168, 110, 255, 0.1);
+        }
+        .stat-number { font-size: 1.6rem; font-weight: 900; color: #a86eff; text-shadow: 0 0 30px rgba(168, 110, 255, 0.3); }
+        .stat-card div:last-child { font-size: 0.65rem; color: #8870aa; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+        
+        /* ===== КОММЕНТАРИИ ===== */
+        .comment { 
+            background: #0a0715; 
+            padding: 8px 12px; 
+            border-radius: 0; 
+            margin-bottom: 6px; 
+            display: flex; 
+            justify-content: space-between; 
+            flex-wrap: wrap; 
+            align-items: center; 
+            border-left: 3px solid #3a1a6a; 
+            font-size: 0.85rem; 
+            clip-path: polygon(0 0, 100% 0, 98% 100%, 0 100%);
+        }
+        .comment strong { color: #a86eff; }
+        
+        /* ===== ПРАВИЛА ===== */
+        .rules-text { line-height: 1.8; color: #8870aa; font-size: 0.8rem; }
+        .rules-text p { margin-bottom: 6px; padding-left: 4px; border-left: 2px solid transparent; padding-left: 10px; }
+        .rules-text p:hover { border-left-color: #a86eff; }
+        .rules-text .rule-num { color: #a86eff; font-weight: 900; }
+        
+        /* ===== ПОЛЬЗОВАТЕЛИ ===== */
+        .user-card { 
+            background: #0d0a1a; 
+            padding: 10px; 
+            border-radius: 0; 
+            margin-bottom: 8px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 6px; 
+            border: 2px solid #3a1a6a; 
+            transition: 0.2s; 
+            font-size: 0.8rem; 
+            clip-path: polygon(0 0, 100% 0, 98% 100%, 0 100%);
+        }
+        .user-card .user-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; width: 100%; }
+        .user-card .user-actions { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+        .user-card .user-actions select { 
+            padding: 3px 8px; 
+            background: #0a0715; 
+            border: 2px solid #3a1a6a; 
+            border-radius: 0; 
+            color: #d4c8f0; 
+            font-size: 0.7rem; 
+            clip-path: polygon(0 0, 100% 0, 90% 100%, 0 100%);
+        }
+        
+        /* ===== ТАБЫ ===== */
+        .tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 2px solid #3a1a6a; flex-wrap: wrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .tab-btn { 
+            background: none; 
+            border: none; 
+            padding: 6px 14px; 
+            cursor: pointer; 
+            color: #8870aa; 
+            border-radius: 0; 
+            transition: 0.2s; 
+            font-weight: 700; 
+            font-size: 0.75rem; 
+            white-space: nowrap; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 3px solid transparent;
+        }
+        .tab-btn.active { color: #a86eff; border-bottom-color: #a86eff; background: rgba(168, 110, 255, 0.05); }
+        
+        /* ===== МОДАЛКИ ===== */
+        .edit-modal { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.97); 
+            z-index: 5000; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 12px; 
+        }
+        .edit-modal > div { 
+            background: #0d0a1a; 
+            padding: 16px; 
+            border-radius: 0; 
+            width: 100%; 
+            max-width: 500px; 
+            border: 3px solid #6b2fd0; 
+            max-height: 90vh; 
+            overflow-y: auto; 
+            color: #d4c8f0; 
+            clip-path: polygon(0 0, 100% 0, 98% 100%, 0 100%);
+            box-shadow: 0 0 60px rgba(107, 47, 208, 0.3);
+        }
+        
+        /* ===== СТРАНА ===== */
+        .country-item { 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            padding: 6px 12px; 
+            border-bottom: 1px solid #2a1a4a; 
+            cursor: pointer; 
+            border-radius: 0; 
+            transition: 0.2s; 
+            font-size: 0.85rem; 
+            clip-path: polygon(0 0, 100% 0, 98% 100%, 0 100%);
+            font-weight: 600;
+        }
+        .country-item:active { background: rgba(107, 47, 208, 0.15); padding-left: 18px; border-left: 3px solid #a86eff; }
+        
+        /* ===== ТОСТ ===== */
+        .toast { 
+            position: fixed; 
+            bottom: 16px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            background: #00cc66; 
+            color: #000; 
+            padding: 10px 20px; 
+            border-radius: 0; 
+            z-index: 9999; 
+            animation: fadeOut 3s forwards; 
+            font-weight: 900; 
+            font-size: 0.85rem; 
+            max-width: 90%; 
+            text-align: center; 
+            clip-path: polygon(0 0, 100% 0, 96% 100%, 0 100%);
+            box-shadow: 0 0 40px rgba(0, 204, 102, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        @keyframes fadeOut { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+        
+        /* ===== ЗАГРУЗКА ===== */
+        .loading-overlay { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: #07050e; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 10000; 
+            flex-direction: column; 
+            gap: 16px; 
+        }
+        .loading-spinner { 
+            width: 40px; 
+            height: 40px; 
+            border: 4px solid #3a1a6a; 
+            border-top-color: #a86eff; 
+            border-radius: 0; 
+            animation: spin 0.8s linear infinite; 
+            clip-path: polygon(0 0, 100% 0, 90% 100%, 0 100%);
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* ===== КАРТА ===== */
+        .map-container { height: 180px; border-radius: 0; margin: 8px 0; border: 2px solid #3a1a6a; overflow: hidden; }
+        .map-container .leaflet-control-zoom { border-radius: 0; }
+        .map-pin { cursor: pointer; color: #a86eff; font-weight: 700; font-size: 0.8rem; }
+        .map-pin:active { text-decoration: underline; }
+        
+        /* ===== СКЕТЧИ ===== */
+        .sketch-tag { display: inline-block; background: #1a0a2a; padding: 2px 12px; border-radius: 0; font-size: 0.6rem; color: #8870aa; margin: 2px; border: 1px solid #3a1a6a; clip-path: polygon(0 0, 100% 0, 90% 100%, 0 100%); font-weight: 700; }
+        .sketch-gallery .photo-card { border-color: #6b2fd0; }
+        .sketch-gallery .photo-card::before { content: '◆'; position: absolute; top: 8px; left: 8px; font-size: 1.2rem; z-index: 2; color: #a86eff; text-shadow: 0 0 20px rgba(168, 110, 255, 0.5); }
+        
+        /* ===== МОДЕЛЬНЫЙ ЧИП ===== */
+        .model-filter-chip { 
+            background: #0d0a1a; 
+            padding: 3px 12px; 
+            border-radius: 0; 
+            border: 2px solid #3a1a6a; 
+            cursor: pointer; 
+            font-size: 0.65rem; 
+            transition: 0.2s; 
+            touch-action: manipulation; 
+            clip-path: polygon(0 0, 100% 0, 90% 100%, 0 100%);
+            font-weight: 700;
+            color: #d4c8f0;
+        }
+        .model-filter-chip:active { transform: scale(0.95); background: #a86eff; color: #000; border-color: #a86eff; }
+        .model-filter-chip.active { background: #a86eff; color: #000; border-color: #a86eff; }
+        
+        /* ===== ПОХОЖИЕ ФОТО ===== */
+        .similar-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px; margin-top: 6px; }
+        .similar-photos img { 
+            width: 100%; 
+            height: 80px; 
+            object-fit: cover; 
+            border-radius: 0; 
+            cursor: pointer; 
+            border: 2px solid #3a1a6a; 
+            transition: 0.2s; 
+            clip-path: polygon(0 0, 100% 0, 95% 100%, 0 100%);
+        }
+        .similar-photos img:active { transform: scale(0.95); border-color: #a86eff; }
+        
+        /* ===== ВЕРСИЯ ===== */
+        .version-info { position: fixed; bottom: 4px; right: 6px; font-size: 0.45rem; color: #2a1a4a; z-index: 50; font-weight: 700; }
+        
+        /* ===== АДАПТИВ ===== */
+        @media (min-width: 600px) {
+            .photo-grid { grid-template-columns: repeat(2, 1fr); }
+            .photo-page-main { flex-direction: row; }
+            .photo-page-image { flex: 1.8; min-width: 0; }
+            .photo-page-sidebar { flex: 1.2; min-width: 0; }
+            .main-two-columns { flex-direction: row; }
+            .main-center { flex: 2; min-width: 0; }
+            .main-sidebar { flex: 1; min-width: 0; }
+            .user-card { flex-direction: row; align-items: center; }
+            .user-card .user-actions { margin-top: 0; }
+            .header { padding: 0.6rem 1.2rem; }
+            .container { padding: 0 16px; margin: 12px auto; }
+            .section { padding: 18px; }
+        }
+        @media (min-width: 900px) {
+            .photo-grid { grid-template-columns: repeat(3, 1fr); }
+            .container { max-width: 1400px; margin: 16px auto; padding: 0 24px; }
+            .section { padding: 22px; }
+            .photo-card img { height: 200px; }
+        }
+        @media (max-width: 400px) {
+            .header { padding: 0.4rem 0.6rem; }
+            .site-title { font-size: 0.7rem; }
+            .logo { font-size: 1.1rem; }
+            .user-info { font-size: 0.65rem; }
+            .photo-card img { height: 140px; }
+            .btn, button { font-size: 0.7rem; padding: 4px 10px; min-height: 32px; }
+            .vehicle-field-grid { grid-template-columns: 1fr; }
+            .search-row { flex-direction: column; }
+        }
+        * { -webkit-touch-callout: none; }
+        input, textarea, select { -webkit-user-select: text; user-select: text; }
+        
+        /* ===== ДОП. ОСТРЫЕ ЭЛЕМЕНТЫ ===== */
+        .vehicle-state-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 0; font-size: 0.65rem; font-weight: 700; clip-path: polygon(0 0, 100% 0, 90% 100%, 0 100%); }
+        .moderation-note { margin-top: 4px; padding: 6px 12px; background: rgba(107, 47, 208, 0.15); border-radius: 0; font-size: 0.65rem; border-left: 3px solid #a86eff; color: #8870aa; clip-path: polygon(0 0, 100% 0, 98% 100%, 0 100%); }
+        .profile-field { margin-bottom: 6px; padding: 6px 12px; background: #0a0715; border-radius: 0; font-size: 0.8rem; border-left: 3px solid #3a1a6a; }
+        .profile-label { color: #a86eff; font-size: 0.6rem; margin-bottom: 2px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+        .thumb-strip-small { display: flex; gap: 6px; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+        .thumb-strip-small img { width: 55px; height: 55px; object-fit: cover; border-radius: 0; cursor: pointer; border: 2px solid #3a1a6a; transition: 0.2s; flex-shrink: 0; clip-path: polygon(0 0, 100% 0, 90% 100%, 0 100%); }
+        .thumb-strip-small img:active { transform: scale(0.95); border-color: #a86eff; }
+        .timeline-item { padding: 6px 0; border-bottom: 1px solid #2a1a4a; display: flex; gap: 8px; align-items: center; font-size: 0.8rem; }
+        .timeline-date { font-size: 0.6rem; color: #a86eff; min-width: 65px; font-weight: 700; }
+        .photographer-item { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; cursor: pointer; padding: 6px 10px; border-radius: 0; transition: 0.2s; font-size: 0.8rem; border-left: 2px solid transparent; }
+        .photographer-item:active { background: rgba(107, 47, 208, 0.1); border-left-color: #a86eff; }
+        .admin-stats { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+        .stats-grid .stat-card { margin-bottom: 0; }
+        .search-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .search-row input { flex: 1; min-width: 120px; }
+        .search-row select { flex: 1; min-width: 100px; }
+        .vehicle-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .vehicle-field-grid .form-group { margin-bottom: 0; }
+        .vehicle-extra-info { font-size: 0.75rem; color: #8870aa; margin-top: 4px; }
+        .vehicle-extra-info div { padding: 2px 0; }
+        .vehicle-extra-info span { color: #d4c8f0; font-weight: 600; }
+        .rating-summary { display: flex; gap: 12px; padding: 6px 0; flex-wrap: wrap; }
+        .rating-item { display: flex; align-items: center; gap: 4px; font-size: 0.9rem; }
+        .rating-item .num { font-weight: 900; font-size: 1.2rem; }
+        .rating-item.likes .num { color: #00cc66; }
+        .rating-item.dislikes .num { color: #ff0040; }
+        .rating-item.views .num { color: #a86eff; }
+        .collapse-trigger { cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 4px 0; user-select: none; font-size: 0.85rem; font-weight: 700; }
+        .collapse-trigger:active { color: #a86eff; }
+        .collapse-content { overflow: hidden; max-height: 0; transition: max-height 0.35s ease, padding 0.3s ease; padding: 0; }
+        .collapse-content.open { max-height: 800px; padding: 8px 0 2px 0; }
+        .collapse-content table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        .collapse-content td { padding: 4px 6px; border-bottom: 1px solid #2a1a4a; }
+        .collapse-content td:first-child { color: #8870aa; width: 35%; font-weight: 600; }
+        .collapse-content td:last-child { font-weight: 700; }
+        .exif-data { font-size: 0.75rem; color: #8870aa; }
+        .exif-data div { padding: 2px 0; }
+        .exif-data span { color: #d4c8f0; font-weight: 600; }
+        .comment-actions { display: flex; gap: 4px; margin-left: 6px; }
+        .comment-actions button { background: none; border: none; color: #8870aa; cursor: pointer; padding: 2px 6px; border-radius: 0; font-size: 0.7rem; transition: 0.2s; }
+        .comment-actions button:active { background: #3a1a6a; }
+        .comment-actions .del-comment { color: #ff0040; }
+        .fullscreen-viewer { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 3000; overflow-y: auto; }
+        .fullscreen-viewer.active { display: flex; flex-direction: column; }
+        .fullscreen-close { position: fixed; top: 10px; right: 12px; font-size: 1.6rem; cursor: pointer; background: rgba(0,0,0,0.8); border: 2px solid #6b2fd0; width: 40px; height: 40px; color: white; z-index: 3001; display: flex; align-items: center; justify-content: center; clip-path: polygon(0 0, 100% 0, 90% 100%, 0 100%); }
+        .fullscreen-close:active { background: #ff0040; transform: scale(0.9); }
+        .fullscreen-image { flex: 1; display: flex; justify-content: center; align-items: center; padding: 10px; }
+        .fullscreen-image img { max-width: 100%; max-height: 55vh; object-fit: contain; border-radius: 0; }
+        .fullscreen-info { background: rgba(0,0,0,0.95); padding: 14px 16px; border-top: 3px solid #6b2fd0; max-height: 50vh; overflow-y: auto; }
+        .photo-page { display: flex; flex-direction: column; gap: 12px; }
+        .photo-page-main { display: flex; flex-direction: column; gap: 12px; }
+        .photo-page-image { width: 100%; }
+        .photo-page-image img { width: 100%; max-height: 350px; object-fit: contain; border-radius: 0; background: #0a0715; border: 2px solid #3a1a6a; }
+        .photo-page-sidebar { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+        .photo-page-sidebar .info-block { background: #0d0a1a; border-radius: 0; padding: 12px; border: 2px solid #3a1a6a; clip-path: polygon(0 0, 100% 0, 98% 100%, 0 100%); }
+        .photo-page-sidebar .info-block h4 { color: #a86eff; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; font-size: 0.85rem; border-left: 3px solid #a86eff; padding-left: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 800; }
+        .vote-big { font-size: 0.95rem; padding: 4px 16px; min-height: 36px; }
+        .photo-actions-bar { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+        .photo-actions-bar .btn { font-size: 0.7rem; padding: 4px 10px; min-height: 32px; }
+        
+        /* Кнопка смены темы — убрана, только тёмная */
+        .theme-toggle-btn { display: none; }
+    </style>
+</head>
+<body>
+<div id="app"><div class="loading-overlay"><div class="loading-spinner"></div><div>ЗАГРУЗКА ДАННЫХ...</div></div></div>
+<div class="version-info">v12.0 — ОСТРЫЙ ДИЗАЙН</div>
+
+<script>
+    // ===== VERSION 12.0 — ОСТРЫЙ ДИЗАЙН =====
+    console.log('Train Spotting Site v12.0 — Острый фиолетово-чёрный дизайн');
+    
+    let db = null;
+    let currentUser = null;
+    let allPhotos = [];
+    let users = [];
+    let votes = [];
+    let comments = [];
+    let notifications = [];
+    let editRequests = [];
+    let vehiclesProfiles = {};
+    
+    const DB_NAME = 'TrainSpottingDB';
+    const DB_VERSION = 12;
+    
+    const VEHICLE_STATES = {
+        oper: { ru: 'В ЭКСПЛУАТАЦИИ', icon: 'fa-play-circle', class: 'state-oper' },
+        repair: { ru: 'НА РЕМОНТЕ', icon: 'fa-wrench', class: 'state-repair' },
+        storage: { ru: 'НА ХРАНЕНИИ', icon: 'fa-warehouse', class: 'state-storage' },
+        scrap: { ru: 'СПИСАН', icon: 'fa-trash-alt', class: 'state-scrap' },
+        unknown: { ru: 'НЕИЗВЕСТНО', icon: 'fa-question', class: 'state-unknown' }
+    };
+    
+    function getStateText(state) { return VEHICLE_STATES[state]?.ru || 'НЕИЗВЕСТНО'; }
+    function getStateClass(state) { return VEHICLE_STATES[state]?.class || 'state-unknown'; }
+    function getStateIcon(state) { return VEHICLE_STATES[state]?.icon || 'fa-question'; }
+    function canModerate(user) { return user && (user.role === 'admin' || user.role === 'moderator'); }
+    function canEditUsers(user) { return user && user.role === 'admin'; }
+    function escapeHtml(str) { return String(str || '').replace(/[&<>]/g, function(m){ return m==='&'?'&amp;':m==='<'?'&lt;':'&gt;';}); }
+    
+    // ========== INDEXEDDB ==========
+    function initDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => { db = request.result; resolve(); };
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains('users')) db.createObjectStore('users', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('photos')) db.createObjectStore('photos', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('votes')) db.createObjectStore('votes', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('comments')) db.createObjectStore('comments', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('notifications')) db.createObjectStore('notifications', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('editRequests')) db.createObjectStore('editRequests', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('vehiclesProfiles')) db.createObjectStore('vehiclesProfiles', { keyPath: 'vehicle' });
+            };
+        });
+    }
+    
+    async function getAllFromStore(storeName) {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(storeName, 'readonly');
+            const request = tx.objectStore(storeName).getAll();
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
+    }
+    async function putToStore(storeName, item) {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(storeName, 'readwrite');
+            const request = tx.objectStore(storeName).put(item);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    }
+    async function deleteFromStore(storeName, id) {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(storeName, 'readwrite');
+            const request = tx.objectStore(storeName).delete(id);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    }
+    
+    async function loadAllData() {
+        try {
+            users = await getAllFromStore('users');
+            allPhotos = await getAllFromStore('photos');
+            votes = await getAllFromStore('votes');
+            comments = await getAllFromStore('comments');
+            notifications = await getAllFromStore('notifications');
+            editRequests = await getAllFromStore('editRequests');
+            const vp = await getAllFromStore('vehiclesProfiles');
+            vehiclesProfiles = {};
+            vp.forEach(p => vehiclesProfiles[p.vehicle] = p);
+            
+            if (users.length === 0) {
+                const admin = { id: 'admin1', name: 'АДМИНИСТРАТОР', email: 'admin@trainspotting.com', password: 'admin123', role: 'admin', banVote: false, banComment: false, bio: 'ГЛАВНЫЙ АДМИНИСТРАТОР', city: 'МОСКВА', website: '', telegram: '', createdAt: Date.now() };
+                const moder = { id: 'moder1', name: 'ФОТОМОДЕРАТОР', email: 'moder@trainspotting.com', password: 'moder123', role: 'moderator', banVote: false, banComment: false, bio: 'ПРОВЕРЯЮ ФОТО', city: 'САНКТ-ПЕТЕРБУРГ', website: '', telegram: '', createdAt: Date.now() };
+                const demo = { id: 'demo1', name: 'ДЕМО ПОЛЬЗОВАТЕЛЬ', email: 'demo@mail.ru', password: 'demo123', role: 'user', banVote: false, banComment: false, bio: 'ЛЮБЛЮ ФОТОГРАФИРОВАТЬ ТЕХНИКУ', city: 'МИНСК', website: '', telegram: '', createdAt: Date.now() };
+                await putToStore('users', admin); await putToStore('users', moder); await putToStore('users', demo);
+                users = [admin, moder, demo];
+                
+                const photos = [
+                    { id: 'p1', userId: 'admin1', url: 'https://picsum.photos/id/111/1200/800', thumb: 'https://picsum.photos/id/111/400/300', vehicle: 'ЭП20', model: 'ЭП20', loc: { country: 'РОССИЯ', city: 'МОСКВА', street: 'КИЕВСКАЯ', lat: 55.7558, lng: 37.6173 }, status: 'approved', rating: 25, likes: 18, dislikes: 2, views: 145, createdAt: Date.now() - 3600000, moderationNote: '', exif: { camera: 'Canon EOS 5D', lens: '24-70mm f/2.8', iso: 400, shutter: '1/500', aperture: 'f/4.0' }, isSketch: false },
+                    { id: 'p2', userId: 'demo1', url: 'https://picsum.photos/id/222/1200/800', thumb: 'https://picsum.photos/id/222/400/300', vehicle: 'ВЛ85', model: 'ВЛ85', loc: { country: 'РОССИЯ', city: 'САНКТ-ПЕТЕРБУРГ', street: '', lat: 59.9343, lng: 30.3351 }, status: 'approved', rating: 20, likes: 15, dislikes: 1, views: 92, createdAt: Date.now() - 86400000, moderationNote: '', exif: { camera: 'Nikon D850', lens: '24-120mm f/4', iso: 200, shutter: '1/1000', aperture: 'f/5.6' }, isSketch: false },
+                    { id: 'p3', userId: 'admin1', url: 'https://picsum.photos/id/333/1200/800', thumb: 'https://picsum.photos/id/333/400/300', vehicle: 'ТЭП70', model: 'ТЭП70', loc: { country: 'РОССИЯ', city: 'ЕКАТЕРИНБУРГ', street: '', lat: 56.8389, lng: 60.6057 }, status: 'approved', rating: 28, likes: 20, dislikes: 1, views: 267, createdAt: Date.now() - 172800000, moderationNote: '', exif: { camera: 'Sony A7R IV', lens: '70-200mm f/2.8', iso: 100, shutter: '1/800', aperture: 'f/5.0' }, isSketch: false },
+                    { id: 'p4', userId: 'demo1', url: 'https://picsum.photos/id/444/1200/800', thumb: 'https://picsum.photos/id/444/400/300', vehicle: 'ЧС4', model: 'ЧС4', loc: { country: 'РОССИЯ', city: 'КРАСНОДАР', street: '', lat: 45.0355, lng: 38.9750 }, status: 'pending', rating: 0, likes: 0, dislikes: 0, views: 0, createdAt: Date.now(), moderationNote: '', exif: {}, isSketch: false },
+                    { id: 'p5', userId: 'admin1', url: 'https://picsum.photos/id/555/1200/800', thumb: 'https://picsum.photos/id/555/400/300', vehicle: 'ЗАКАТ НА ПУТЯХ', model: 'ПЕЙЗАЖ', loc: { country: 'РОССИЯ', city: 'МОСКВА', street: 'МКАД', lat: 55.7558, lng: 37.6173 }, status: 'approved', rating: 15, likes: 12, dislikes: 0, views: 78, createdAt: Date.now() - 259200000, moderationNote: '', exif: { camera: 'iPhone 14', lens: '26mm', iso: 50, shutter: '1/2000', aperture: 'f/1.6' }, isSketch: true }
+                ];
+                for (const p of photos) await putToStore('photos', p);
+                allPhotos = photos;
+                
+                const profiles = {
+                    'ЭП20': { vehicle: 'ЭП20', model: 'ЭП20', year: 2016, engine: '6N21A1', state: 'oper', purpose: 'ПАССАЖИРСКИЙ ЛОКОМОТИВ', body: 'BO-BO', drive: 'ЭЛЕКТРИЧЕСКИЙ', power: '4000 КВТ', company: 'РЖД', plate: 'ЭП20-123', vin: 'RZD-EP20-001', color: 'КРАСНЫЙ С СЕРЫМ', mileage: '850000 КМ' },
+                    'ВЛ85': { vehicle: 'ВЛ85', model: 'ВЛ85', year: 1983, engine: 'НБ-514', state: 'oper', purpose: 'ГРУЗОВОЙ ЛОКОМОТИВ', body: 'BO-BO+BO-BO', drive: 'ЭЛЕКТРИЧЕСКИЙ', power: '10000 КВТ', company: 'РЖД', plate: 'ВЛ85-456', vin: 'RZD-VL85-002', color: 'СИНИЙ', mileage: '1200000 КМ' },
+                    'ТЭП70': { vehicle: 'ТЭП70', model: 'ТЭП70', year: 1973, engine: '12Д49', state: 'repair', purpose: 'ПАССАЖИРСКИЙ ТЕПЛОВОЗ', body: 'CO-CO', drive: 'ДИЗЕЛЬНЫЙ', power: '2940 КВТ', company: 'РЖД', plate: 'ТЭП70-789', vin: 'RZD-TEP70-003', color: 'ЗЕЛЁНЫЙ', mileage: '950000 КМ' },
+                    'ЗАКАТ НА ПУТЯХ': { vehicle: 'ЗАКАТ НА ПУТЯХ', model: 'ПЕЙЗАЖ', year: '—', engine: '—', state: 'unknown', purpose: 'ХУДОЖЕСТВЕННЫЙ КАДР', body: '—', drive: '—', power: '—', company: '—', plate: '—', vin: '—', color: '—', mileage: '—' }
+                };
+                for (const [k, v] of Object.entries(profiles)) { await putToStore('vehiclesProfiles', v); vehiclesProfiles[k] = v; }
+            }
+            
+            let saved = localStorage.getItem('mss_user');
+            if (saved) {
+                try {
+                    let u = JSON.parse(saved);
+                    let found = users.find(user => user.id === u.id);
+                    if (found) { currentUser = JSON.parse(JSON.stringify(found)); delete currentUser.password; }
+                } catch(e) {}
+            }
+            if (!currentUser && users.length) {
+                currentUser = JSON.parse(JSON.stringify(users.find(u => u.role === 'admin')));
+                delete currentUser.password;
+            }
+        } catch(e) {
+            console.error('ОШИБКА ЗАГРУЗКИ:', e);
+        }
+    }
+    
+    function saveSession() { if (currentUser) localStorage.setItem('mss_user', JSON.stringify({ id: currentUser.id, name: currentUser.name })); }
+    function showToast(msg) { 
+        let t = document.createElement('div'); 
+        t.className = 'toast'; 
+        t.innerHTML = '⚡ ' + msg; 
+        document.body.appendChild(t); 
+        setTimeout(() => t.remove(), 3000); 
+    }
+    
+    async function addNotification(userId, title, message) {
+        let notif = { id: Date.now() + '_' + Math.random().toString(36).substr(2, 6), userId, title, message, read: false, createdAt: Date.now() };
+        await putToStore('notifications', notif);
+        notifications.push(notif);
+        if (currentUser && currentUser.id === userId) { updateNotifBadge(); showToast(message); }
+    }
+    
+    function updateNotifBadge() { 
+        let badge = document.getElementById('notifBadge'); 
+        if (badge && currentUser) { 
+            let count = notifications.filter(n => n.userId === currentUser.id && !n.read).length; 
+            badge.textContent = count || ''; 
+            badge.style.display = count ? 'block' : 'none';
+        } 
+    }
+    function getBadgeClass(status) { return status === 'approved' ? 'badge-approved' : status === 'conditional' ? 'badge-conditional' : status === 'rejected' ? 'badge-rejected' : 'badge-pending'; }
+    function getStatusText(status) { return status === 'approved' ? 'ОДОБРЕНО' : status === 'conditional' ? 'УСЛОВНО' : status === 'rejected' ? 'ОТКЛОНЕНО' : 'МОДЕРАЦИЯ'; }
+    function formatLoc(loc) { return [loc.country, loc.city, loc.street].filter(Boolean).join(', ') || '—'; }
+    function getFlag(country) { const map = { 'РОССИЯ':'ru', 'БЕЛАРУСЬ':'by', 'ГЕРМАНИЯ':'de', 'ШВЕЦИЯ':'se' }; let code = map[country] || 'ru'; return `<span class="fi fi-${code} fis" style="width:16px; border-radius:0; display:inline-block; clip-path:polygon(0 0,100% 0,90% 100%,0 100%);"></span>`; }
+    function getUserVote(photoId) { let v = votes.find(v => v.photoId === photoId && v.userId === currentUser?.id); return v ? v.value : 0; }
+    function canUserVote(user) { return user.role === 'admin' ? true : !user.banVote; }
+    function canUserComment(user) { return user.role === 'admin' ? true : !user.banComment; }
+    
+    // ========== ПРОФИЛЬ ==========
+    async function editProfile() {
+        let user = users.find(u => u.id === currentUser.id);
+        let modal = document.createElement('div'); modal.className = 'edit-modal';
+        modal.innerHTML = `<div><h3 style="font-size:1rem; color:#a86eff;"><i class="fas fa-user-edit"></i> РЕДАКТИРОВАНИЕ ПРОФИЛЯ</h3>
+            <div class="form-group"><label>ИМЯ</label><input id="editName" value="${escapeHtml(user.name)}"></div>
+            <div class="form-group"><label>О СЕБЕ</label><textarea id="editBio" rows="3">${escapeHtml(user.bio || '')}</textarea></div>
+            <div class="form-group"><label>ГОРОД</label><input id="editCity" value="${escapeHtml(user.city || '')}"></div>
+            <div class="form-group"><label>САЙТ</label><input id="editWebsite" value="${escapeHtml(user.website || '')}"></div>
+            <div class="form-group"><label>TELEGRAM</label><input id="editTelegram" value="${escapeHtml(user.telegram || '')}"></div>
+            <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;"><button class="btn btn-success" onclick="saveProfileEdit()">СОХРАНИТЬ</button><button class="btn" onclick="this.closest('.edit-modal').remove()">ОТМЕНА</button></div>
+        </div>`;
+        document.body.appendChild(modal);
+    }
+    async function saveProfileEdit() {
+        let user = users.find(u => u.id === currentUser.id);
+        if (user) {
+            let newName = document.getElementById('editName').value.trim().toUpperCase();
+            if (!newName) { alert('ИМЯ НЕ МОЖЕТ БЫТЬ ПУСТЫМ'); return; }
+            user.name = newName; user.bio = document.getElementById('editBio').value.toUpperCase(); user.city = document.getElementById('editCity').value.toUpperCase(); user.website = document.getElementById('editWebsite').value; user.telegram = document.getElementById('editTelegram').value;
+            await putToStore('users', user);
+            currentUser.name = newName; currentUser.bio = user.bio; currentUser.city = user.city; currentUser.website = user.website; currentUser.telegram = user.telegram;
+            showToast('ПРОФИЛЬ ОБНОВЛЁН');
+            document.querySelector('.edit-modal')?.remove();
+            showUserProfile(currentUser.id);
+            renderMainApp();
+        }
+    }
+    
+    async function toggleBanVote(userId) {
+        let user = users.find(u => u.id === userId);
+        if (user && canEditUsers(currentUser) && user.id !== currentUser.id) {
+            user.banVote = !user.banVote;
+            await putToStore('users', user);
+            showToast(`ГОЛОСОВАНИЕ ${user.banVote ? 'ЗАПРЕЩЕНО' : 'РАЗРЕШЕНО'} ДЛЯ ${user.name}`);
+            if (window.currentView === 'profile') showUserProfile(userId);
+            if (window.currentView === 'admin') showAdminPanel();
+        }
+    }
+    async function toggleBanComment(userId) {
+        let user = users.find(u => u.id === userId);
+        if (user && canEditUsers(currentUser) && user.id !== currentUser.id) {
+            user.banComment = !user.banComment;
+            await putToStore('users', user);
+            showToast(`КОММЕНТИРОВАНИЕ ${user.banComment ? 'ЗАПРЕЩЕНО' : 'РАЗРЕШЕНО'} ДЛЯ ${user.name}`);
+            if (window.currentView === 'profile') showUserProfile(userId);
+            if (window.currentView === 'admin') showAdminPanel();
+        }
+    }
+    
+    // ========== ГОЛОСОВАНИЕ ==========
+    async function quickVote(photoId, val) {
+        if (!currentUser) { alert('ВОЙДИТЕ ЧТОБЫ ГОЛОСОВАТЬ'); return; }
+        if (!canUserVote(currentUser)) { alert('ГОЛОСОВАНИЕ ЗАПРЕЩЕНО АДМИНИСТРАТОРОМ'); return; }
+        let photo = allPhotos.find(p => p.id === photoId);
+        if (!photo) return;
+        if (photo.userId === currentUser.id) { alert('НЕЛЬЗЯ ГОЛОСОВАТЬ ЗА СВОЁ ФОТО'); return; }
+        let existing = votes.find(v => v.photoId === photoId && v.userId === currentUser.id);
+        if (existing) {
+            if (existing.value === val) return;
+            if (val === 1) { photo.likes++; if (existing.value === -1) photo.dislikes--; }
+            else { photo.dislikes++; if (existing.value === 1) photo.likes--; }
+            photo.rating += (val - existing.value);
+            existing.value = val;
+            await putToStore('votes', existing);
+        } else {
+            if (val === 1) photo.likes++;
+            else photo.dislikes++;
+            photo.rating += val;
+            const newVote = { id: Date.now() + '_' + Math.random().toString(36).substr(2, 6), photoId, userId: currentUser.id, value: val };
+            await putToStore('votes', newVote);
+            votes.push(newVote);
+        }
+        await putToStore('photos', photo);
+        refreshCurrentView();
+    }
+    
+    // ========== МОДЕРАЦИЯ ==========
+    async function moderatePhoto(id, status, note) {
+        let photo = allPhotos.find(p => p.id === id);
+        if (photo && canModerate(currentUser)) {
+            photo.status = status;
+            photo.moderationNote = note || '';
+            await putToStore('photos', photo);
+            let msg = status === 'approved' ? `ВАШЕ ФОТО "${photo.vehicle}" ОДОБРЕНО!` : (status === 'conditional' ? `ВАШЕ ФОТО "${photo.vehicle}" ПРИНЯТО УСЛОВНО. ЗАМЕЧАНИЕ: ${note || 'НЕТ'}` : `ВАШЕ ФОТО "${photo.vehicle}" ОТКЛОНЕНО. ПРИЧИНА: ${note || 'НЕ УКАЗАНА'}`);
+            await addNotification(photo.userId, status === 'approved' ? 'ФОТО ОДОБРЕНО' : (status === 'conditional' ? 'ФОТО ПРИНЯТО УСЛОВНО' : 'ФОТО ОТКЛОНЕНО'), msg);
+            showToast(`ФОТО ${status === 'approved' ? 'ОДОБРЕНО' : (status === 'conditional' ? 'ПРИНЯТО УСЛОВНО' : 'ОТКЛОНЕНО')}`);
+            if (window.currentView === 'admin') showAdminPanel();
+            refreshCurrentView();
+        }
+    }
+    
+    async function editPhoto(photoId) {
+        if (!canModerate(currentUser)) return;
+        let photo = allPhotos.find(p => p.id === photoId);
+        if (!photo) return;
+        let modal = document.createElement('div'); modal.className = 'edit-modal';
+        modal.innerHTML = `<div><h3 style="font-size:1rem; color:#a86eff;">РЕДАКТИРОВАТЬ ФОТО</h3>
+            <div class="form-group"><label>ТРАНСПОРТ</label><input id="editVeh" value="${escapeHtml(photo.vehicle)}"></div>
+            <div class="form-group"><label>МОДЕЛЬ (ДЛЯ ФИЛЬТРА)</label><input id="editModel" value="${escapeHtml(photo.model || '')}" placeholder="НАПРИМЕР: ЭП20"></div>
+            <div class="form-group"><label>СТРАНА</label><input id="editCountry" value="${escapeHtml(photo.loc.country || '')}"></div>
+            <div class="form-group"><label>ГОРОД</label><input id="editCity" value="${escapeHtml(photo.loc.city || '')}"></div>
+            <div class="form-group"><label>УЛИЦА</label><input id="editStreet" value="${escapeHtml(photo.loc.street || '')}"></div>
+            <div class="form-group"><label>ТИП ФОТО</label><select id="editType"><option value="false" ${!photo.isSketch ? 'selected' : ''}>ОБЫЧНОЕ</option><option value="true" ${photo.isSketch ? 'selected' : ''}>ФОТОЗАРИСОВКА</option></select></div>
+            <button class="btn btn-success" onclick="savePhotoEdit('${photoId}')">СОХРАНИТЬ</button><button class="btn" onclick="this.closest('.edit-modal').remove()">ОТМЕНА</button></div>`;
+        document.body.appendChild(modal);
+    }
+    async function savePhotoEdit(photoId) {
+        let photo = allPhotos.find(p => p.id === photoId);
+        if (photo && canModerate(currentUser)) {
+            photo.vehicle = document.getElementById('editVeh').value.trim().toUpperCase();
+            photo.model = document.getElementById('editModel').value.trim().toUpperCase() || photo.vehicle;
+            photo.loc.country = document.getElementById('editCountry').value.toUpperCase();
+            photo.loc.city = document.getElementById('editCity').value.toUpperCase();
+            photo.loc.street = document.getElementById('editStreet').value.toUpperCase();
+            photo.isSketch = document.getElementById('editType').value === 'true';
+            if (!vehiclesProfiles[photo.vehicle]) {
+                vehiclesProfiles[photo.vehicle] = { vehicle: photo.vehicle, model: photo.model, year: '—', engine: '—', state: 'unknown', purpose: '—', company: '—', plate: '—', vin: '—', color: '—', mileage: '—' };
+                await putToStore('vehiclesProfiles', vehiclesProfiles[photo.vehicle]);
+            }
+            await putToStore('photos', photo);
+            showToast('ФОТО ОБНОВЛЕНО');
+            document.querySelector('.edit-modal')?.remove();
+            refreshCurrentView();
+        }
+    }
+    
+    async function deletePhoto(photoId) {
+        if (!canModerate(currentUser)) return;
+        if (confirm('УДАЛИТЬ ЭТО ФОТО?')) {
+            await deleteFromStore('photos', photoId);
+            allPhotos = allPhotos.filter(p => p.id !== photoId);
+            const toDelVotes = votes.filter(v => v.photoId === photoId);
+            for (const v of toDelVotes) await deleteFromStore('votes', v.id);
+            votes = votes.filter(v => v.photoId !== photoId);
+            const toDelComments = comments.filter(c => c.photoId === photoId);
+            for (const c of toDelComments) await deleteFromStore('comments', c.id);
+            comments = comments.filter(c => c.photoId !== photoId);
+            showToast('ФОТО УДАЛЕНО');
+            refreshCurrentView();
+        }
+    }
+    
+    // ========== ТРАНСПОРТ ==========
+    async function editVehicleProfile(vehicleName) {
+        if (!canEditUsers(currentUser)) return;
+        let profile = vehiclesProfiles[vehicleName] || {};
+        let stateOptions = Object.keys(VEHICLE_STATES).map(s => `<option value="${s}" ${profile.state===s?'selected':''}>${getStateText(s)}</option>`).join('');
+        let modal = document.createElement('div'); modal.className = 'edit-modal';
+        modal.innerHTML = `<div><h3 style="font-size:1rem; color:#a86eff;"><i class="fas fa-edit"></i> РЕДАКТИРОВАНИЕ ТС</h3>
+            <div class="vehicle-field-grid">
+                <div class="form-group"><label>НАЗВАНИЕ</label><input id="editVehicle" value="${escapeHtml(profile.vehicle || vehicleName)}"></div>
+                <div class="form-group"><label>МОДЕЛЬ (ДЛЯ ФИЛЬТРА)</label><input id="editModel" value="${escapeHtml(profile.model || vehicleName)}"></div>
+                <div class="form-group"><label>ГОД</label><input id="editYear" value="${profile.year || ''}"></div>
+                <div class="form-group"><label>ДВИГАТЕЛЬ</label><input id="editEngine" value="${profile.engine || ''}"></div>
+                <div class="form-group"><label>МОЩНОСТЬ</label><input id="editPower" value="${profile.power || ''}"></div>
+                <div class="form-group"><label>КУЗОВ</label><input id="editBody" value="${profile.body || ''}"></div>
+                <div class="form-group"><label>ПРИВОД</label><input id="editDrive" value="${profile.drive || ''}"></div>
+                <div class="form-group"><label>ЦВЕТ</label><input id="editColor" value="${profile.color || ''}"></div>
+                <div class="form-group"><label>ПРОБЕГ</label><input id="editMileage" value="${profile.mileage || ''}"></div>
+                <div class="form-group"><label>ПРЕДПРИЯТИЕ</label><input id="editCompany" value="${profile.company || ''}"></div>
+                <div class="form-group"><label>ГОС. НОМЕР</label><input id="editPlate" value="${profile.plate || ''}"></div>
+                <div class="form-group"><label>VIN</label><input id="editVin" value="${profile.vin || ''}"></div>
+                <div class="form-group"><label>СОСТОЯНИЕ</label><select id="editState">${stateOptions}</select></div>
+            </div>
+            <div class="form-group"><label>НАЗНАЧЕНИЕ</label><textarea id="editPurpose">${profile.purpose || ''}</textarea></div>
+            <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;"><button class="btn btn-success" onclick="saveVehicleProfile('${escapeHtml(vehicleName)}')">СОХРАНИТЬ</button><button class="btn" onclick="this.closest('.edit-modal').remove()">ОТМЕНА</button></div>
+        </div>`;
+        document.body.appendChild(modal);
+    }
+    async function saveVehicleProfile(oldName) {
+        let newVehicle = document.getElementById('editVehicle').value.trim().toUpperCase();
+        let newModel = document.getElementById('editModel').value.trim().toUpperCase();
+        if (!newVehicle) { alert('ВВЕДИТЕ НАЗВАНИЕ'); return; }
+        if (!newModel) newModel = newVehicle;
+        let profile = { 
+            vehicle: newVehicle, model: newModel,
+            year: document.getElementById('editYear').value.toUpperCase(), 
+            engine: document.getElementById('editEngine').value.toUpperCase(),
+            power: document.getElementById('editPower').value.toUpperCase(),
+            body: document.getElementById('editBody').value.toUpperCase(),
+            drive: document.getElementById('editDrive').value.toUpperCase(),
+            color: document.getElementById('editColor').value.toUpperCase(),
+            mileage: document.getElementById('editMileage').value.toUpperCase(),
+            company: document.getElementById('editCompany').value.toUpperCase(),
+            plate: document.getElementById('editPlate').value.toUpperCase(),
+            vin: document.getElementById('editVin').value.toUpperCase(),
+            state: document.getElementById('editState').value, 
+            purpose: document.getElementById('editPurpose').value.toUpperCase() 
+        };
+        if (newVehicle !== oldName) {
+            delete vehiclesProfiles[oldName];
+            await deleteFromStore('vehiclesProfiles', oldName);
+            for (let p of allPhotos) { 
+                if (p.vehicle === oldName) { 
+                    p.vehicle = newVehicle; 
+                    p.model = newModel;
+                    await putToStore('photos', p); 
+                } 
+            }
+        }
+        vehiclesProfiles[newVehicle] = profile;
+        await putToStore('vehiclesProfiles', profile);
+        document.querySelector('.edit-modal')?.remove();
+        showToast('ПРОФИЛЬ ТС ОБНОВЛЁН');
+        showVehiclePage(newVehicle);
+        refreshCurrentView();
+    }
+    
+    async function requestVehicleEdit(vehicleName) {
+        let profile = vehiclesProfiles[vehicleName] || {};
+        let stateOptions = Object.keys(VEHICLE_STATES).map(s => `<option value="${s}" ${profile.state===s?'selected':''}>${getStateText(s)}</option>`).join('');
+        let modal = document.createElement('div'); modal.className = 'edit-modal';
+        modal.innerHTML = `<div><h3 style="font-size:1rem; color:#a86eff;"><i class="fas fa-edit"></i> ПРЕДЛОЖИТЬ ИЗМЕНЕНИЕ</h3>
+            <div class="vehicle-field-grid">
+                <div class="form-group"><label>НАЗВАНИЕ</label><input id="reqVehicle" value="${profile.vehicle || vehicleName}"></div>
+                <div class="form-group"><label>МОДЕЛЬ (ДЛЯ ФИЛЬТРА)</label><input id="reqModel" value="${profile.model || vehicleName}"></div>
+                <div class="form-group"><label>ГОД</label><input id="reqYear" value="${profile.year || ''}"></div>
+                <div class="form-group"><label>ДВИГАТЕЛЬ</label><input id="reqEngine" value="${profile.engine || ''}"></div>
+                <div class="form-group"><label>МОЩНОСТЬ</label><input id="reqPower" value="${profile.power || ''}"></div>
+                <div class="form-group"><label>КУЗОВ</label><input id="reqBody" value="${profile.body || ''}"></div>
+                <div class="form-group"><label>ПРИВОД</label><input id="reqDrive" value="${profile.drive || ''}"></div>
+                <div class="form-group"><label>ЦВЕТ</label><input id="reqColor" value="${profile.color || ''}"></div>
+                <div class="form-group"><label>ПРОБЕГ</label><input id="reqMileage" value="${profile.mileage || ''}"></div>
+                <div class="form-group"><label>ПРЕДПРИЯТИЕ</label><input id="reqCompany" value="${profile.company || ''}"></div>
+                <div class="form-group"><label>ГОС. НОМЕР</label><input id="reqPlate" value="${profile.plate || ''}"></div>
+                <div class="form-group"><label>VIN</label><input id="reqVin" value="${profile.vin || ''}"></div>
+                <div class="form-group"><label>СОСТОЯНИЕ</label><select id="reqState">${stateOptions}</select></div>
+            </div>
+            <div class="form-group"><label>НАЗНАЧЕНИЕ</label><textarea id="reqPurpose">${profile.purpose || ''}</textarea></div>
+            <div class="form-group"><label>ОБОСНОВАНИЕ</label><textarea id="reqReason" placeholder="ОПИШИТЕ ПРИЧИНУ ИЗМЕНЕНИЙ..."></textarea></div>
+            <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;"><button class="btn btn-success" onclick="submitEditRequest('${escapeHtml(vehicleName)}')">ОТПРАВИТЬ</button><button class="btn" onclick="this.closest('.edit-modal').remove()">ОТМЕНА</button></div>
+        </div>`;
+        document.body.appendChild(modal);
+    }
+    async function submitEditRequest(vehicleName) {
+        let newVehicle = document.getElementById('reqVehicle').value.trim().toUpperCase();
+        let newModel = document.getElementById('reqModel').value.trim().toUpperCase();
+        let request = { 
+            id: Date.now() + '_' + Math.random().toString(36).substr(2, 6), 
+            vehicleName: vehicleName,
+            newVehicle: newVehicle || vehicleName,
+            userId: currentUser.id, userName: currentUser.name, 
+            changes: { 
+                vehicle: newVehicle || vehicleName,
+                model: newModel || vehicleName,
+                year: document.getElementById('reqYear').value.toUpperCase(), 
+                engine: document.getElementById('reqEngine').value.toUpperCase(),
+                power: document.getElementById('reqPower').value.toUpperCase(),
+                body: document.getElementById('reqBody').value.toUpperCase(),
+                drive: document.getElementById('reqDrive').value.toUpperCase(),
+                color: document.getElementById('reqColor').value.toUpperCase(),
+                mileage: document.getElementById('reqMileage').value.toUpperCase(),
+                company: document.getElementById('reqCompany').value.toUpperCase(),
+                plate: document.getElementById('reqPlate').value.toUpperCase(),
+                vin: document.getElementById('reqVin').value.toUpperCase(),
+                state: document.getElementById('reqState').value, 
+                purpose: document.getElementById('reqPurpose').value.toUpperCase() 
+            }, 
+            reason: document.getElementById('reqReason').value, 
+            status: 'pending', createdAt: Date.now() 
+        };
+        await putToStore('editRequests', request);
+        editRequests.push(request);
+        let admins = users.filter(u => u.role === 'admin');
+        for (let admin of admins) await addNotification(admin.id, 'НОВАЯ ЗАЯВКА', `ПОЛЬЗОВАТЕЛЬ ${currentUser.name} ПРЕДЛАГАЕТ ИЗМЕНЕНИЯ ДЛЯ ТС "${vehicleName}"`);
+        document.querySelector('.edit-modal')?.remove();
+        showToast('ЗАЯВКА ОТПРАВЛЕНА');
+        showVehiclePage(vehicleName);
+    }
+    async function approveEditRequest(requestId) {
+        let req = editRequests.find(r => r.id == requestId);
+        if (req && canEditUsers(currentUser)) {
+            let newVehicle = req.changes.vehicle || req.vehicleName;
+            if (newVehicle !== req.vehicleName) {
+                delete vehiclesProfiles[req.vehicleName];
+                await deleteFromStore('vehiclesProfiles', req.vehicleName);
+                for (let p of allPhotos) { 
+                    if (p.vehicle === req.vehicleName) { 
+                        p.vehicle = newVehicle; 
+                        p.model = req.changes.model || newVehicle;
+                        await putToStore('photos', p); 
+                    } 
+                }
+            }
+            vehiclesProfiles[newVehicle] = { vehicle: newVehicle, ...req.changes };
+            await putToStore('vehiclesProfiles', vehiclesProfiles[newVehicle]);
+            req.status = 'approved';
+            await putToStore('editRequests', req);
+            await addNotification(req.userId, 'ЗАЯВКА ОДОБРЕНА', `ВАШЕ ПРЕДЛОЖЕНИЕ ПО ТС "${req.vehicleName}" ПРИНЯТО`);
+            showToast('ЗАЯВКА ОДОБРЕНА');
+            showAdminPanel();
+        }
+    }
+    async function rejectEditRequest(requestId) {
+        let req = editRequests.find(r => r.id == requestId);
+        if (req && canEditUsers(currentUser)) {
+            req.status = 'rejected';
+            await putToStore('editRequests', req);
+            await addNotification(req.userId, 'ЗАЯВКА ОТКЛОНЕНА', `ВАШЕ ПРЕДЛОЖЕНИЕ ПО ТС "${req.vehicleName}" ОТКЛОНЕНО`);
+            showToast('ЗАЯВКА ОТКЛОНЕНА');
+            showAdminPanel();
+        }
+    }
+    
+    // ========== КАРТА ==========
+    function renderMap(containerId, lat, lng, zoom = 12) {
+        setTimeout(() => {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = '';
+            try {
+                const map = L.map(containerId).setView([lat, lng], zoom);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                }).addTo(map);
+                L.marker([lat, lng]).addTo(map);
+                setTimeout(() => map.invalidateSize(), 200);
+            } catch(e) { console.error('ОШИБКА КАРТЫ:', e); }
+        }, 150);
+    }
+    
+    function showMapForPhoto(photoId) {
+        let photo = allPhotos.find(p => p.id === photoId);
+        if (!photo || !photo.loc || !photo.loc.lat || !photo.loc.lng) { alert('КООРДИНАТЫ НЕ УКАЗАНЫ'); return; }
+        let modal = document.createElement('div'); modal.className = 'edit-modal';
+        modal.innerHTML = `<div><h3 style="font-size:1rem; color:#a86eff;"><i class="fas fa-map-marked-alt"></i> МЕСТО СЪЁМКИ: ${photo.vehicle}</h3><div class="map-container" id="mapModalContainer"></div><div style="text-align:center; margin-top:6px; font-size:0.85rem; color:#8870aa;">${photo.loc.country}, ${photo.loc.city}</div><div style="display:flex; justify-content:flex-end; margin-top:8px;"><button class="btn" onclick="this.closest('.edit-modal').remove()">ЗАКРЫТЬ</button></div></div>`;
+        document.body.appendChild(modal);
+        setTimeout(() => renderMap('mapModalContainer', photo.loc.lat, photo.loc.lng, 13), 200);
+    }
+    
+    function showModerationNoteModal(photoId, status) {
+        let modal = document.createElement('div'); modal.className = 'edit-modal';
+        modal.innerHTML = `<div><h3 style="font-size:1rem; color:#a86eff;">${status === 'conditional' ? 'УСЛОВНОЕ ОДОБРЕНИЕ' : 'ОТКЛОНЕНИЕ'}</h3><div class="form-group"><label>ЗАМЕЧАНИЕ ДЛЯ ПОЛЬЗОВАТЕЛЯ</label><textarea id="modNote" rows="3" placeholder="УКАЖИТЕ ПРИЧИНУ..."></textarea></div><div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;"><button class="btn btn-success" onclick="moderatePhoto('${photoId}', '${status}', document.getElementById('modNote').value); this.closest('.edit-modal').remove()">ПОДТВЕРДИТЬ</button><button class="btn" onclick="this.closest('.edit-modal').remove()">ОТМЕНА</button></div></div>`;
+        document.body.appendChild(modal);
+    }
+    
+    // ========== КОММЕНТАРИИ ==========
+    async function deleteComment(commentId) {
+        let comment = comments.find(c => c.id === commentId);
+        if (!comment) return;
+        if (currentUser.id !== comment.userId && !canModerate(currentUser)) {
+            alert('ВЫ НЕ МОЖЕТЕ УДАЛИТЬ ЭТОТ КОММЕНТАРИЙ');
+            return;
+        }
+        if (confirm('УДАЛИТЬ КОММЕНТАРИЙ?')) {
+            await deleteFromStore('comments', commentId);
+            comments = comments.filter(c => c.id !== commentId);
+            showToast('КОММЕНТАРИЙ УДАЛЁН');
+            refreshCurrentView();
+        }
+    }
+    
+    // ========== НОВЫЕ ФУНКЦИИ ==========
+    function showRandomPhoto() {
+        let approved = allPhotos.filter(p => p.status === 'approved');
+        if (approved.length === 0) { alert('НЕТ ФОТО'); return; }
+        let random = approved[Math.floor(Math.random() * approved.length)];
+        showPhotoPage(random.id);
+    }
+    
+    function showModelStats() {
+        let approved = allPhotos.filter(p => p.status === 'approved');
+        let modelCount = {};
+        approved.forEach(p => {
+            let model = p.model || p.vehicle;
+            modelCount[model] = (modelCount[model] || 0) + 1;
+        });
+        let sorted = Object.entries(modelCount).sort((a,b) => b[1] - a[1]).slice(0, 10);
+        document.getElementById('mainContent').innerHTML = `
+            <div class="section">
+                <h2 style="font-size:1rem;"><i class="fas fa-chart-bar"></i> ТОП-10 МОДЕЛЕЙ ПО ПОПУЛЯРНОСТИ</h2>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                    ${sorted.map(([model, count], i) => `
+                        <div style="display:flex; align-items:center; gap:10px; background:#0d0a1a; padding:6px 12px; border:2px solid #3a1a6a; clip-path:polygon(0 0,100% 0,98% 100%,0 100%);">
+                            <span style="font-weight:900; color:#a86eff; min-width:24px;">${i+1}.</span>
+                            <span style="flex:1; color:#d4c8f0; font-weight:700;">${model}</span>
+                            <span style="background:#0a0715; padding:2px 12px; clip-path:polygon(0 0,100% 0,90% 100%,0 100%); font-size:0.75rem; color:#8870aa; font-weight:700;">${count} ФОТО</span>
+                        </div>
+                    `).join('')}
+                </div>
+                <button class="btn" onclick="renderHome()" style="margin-top:12px;">НА ГЛАВНУЮ</button>
+            </div>
+        `;
+    }
+    
+    // ========== СТРАНИЦЫ ==========
+    function showPhotoPage(photoId) {
+        let photo = allPhotos.find(p => p.id === photoId);
+        if (!photo) { renderHome(); return; }
+        window.currentView = 'photopage';
+        window.currentPhotoId = photoId;
+        photo.views = (photo.views || 0) + 1;
+        putToStore('photos', photo);
+        
+        let author = users.find(u => u.id === photo.userId);
+        let profile = vehiclesProfiles[photo.vehicle] || {};
+        let photoComments = comments.filter(c => c.photoId === photoId);
+        let userVote = getUserVote(photoId);
+        let canVote = currentUser && canUserVote(currentUser);
+        let canComment = currentUser && canUserComment(currentUser);
+        let isAdmin = canModerate(currentUser);
+        let similar = allPhotos.filter(p => p.id !== photoId && p.status === 'approved' && (p.model === photo.model || p.loc.city === photo.loc.city)).slice(0, 6);
+        
+        let collapseId = 'collapse_' + photoId;
+        let exifHtml = '';
+        if (photo.exif && Object.keys(photo.exif).length > 0) {
+            const exifData = photo.exif;
+            exifHtml = `<div class="exif-data">${Object.entries(exifData).map(([k,v]) => `<div><span>${k.toUpperCase()}:</span> ${v}</div>`).join('')}</div>`;
+        }
+        
+        let mapLink = '';
+        if (photo.loc && photo.loc.lat && photo.loc.lng) {
+            mapLink = `<button class="btn" onclick="showMapForPhoto('${photo.id}')"><i class="fas fa-map-pin"></i> ПОКАЗАТЬ НА КАРТЕ</button>`;
+        }
+        
+        let modActions = '';
+        if (isAdmin && photo.status === 'pending') {
+            modActions = `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;"><button class="btn btn-success" onclick="moderatePhoto('${photo.id}', 'approved', '')">ОДОБРИТЬ</button><button class="btn btn-warning" onclick="showModerationNoteModal('${photo.id}', 'conditional')">УСЛОВНО</button><button class="btn btn-danger" onclick="showModerationNoteModal('${photo.id}', 'rejected')">ОТКЛОНИТЬ</button></div>`;
+        }
+        
+        let adminActions = '';
+        if (isAdmin) {
+            adminActions = `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;"><button class="btn" onclick="editPhoto('${photo.id}')">РЕДАКТИРОВАТЬ</button><button class="btn btn-danger" onclick="deletePhoto('${photo.id}')">УДАЛИТЬ</button></div>`;
+        }
+        
+        let extraInfoHtml = '';
+        if (profile.company || profile.plate || profile.vin || profile.color || profile.mileage) {
+            extraInfoHtml = `<div class="vehicle-extra-info">
+                ${profile.company ? `<div><i class="fas fa-building"></i> <span>${profile.company}</span></div>` : ''}
+                ${profile.plate ? `<div><i class="fas fa-id-card"></i> <span>${profile.plate}</span></div>` : ''}
+                ${profile.vin ? `<div><i class="fas fa-barcode"></i> <span>${profile.vin}</span></div>` : ''}
+                ${profile.color ? `<div><i class="fas fa-palette"></i> <span>${profile.color}</span></div>` : ''}
+                ${profile.mileage ? `<div><i class="fas fa-tachometer-alt"></i> <span>${profile.mileage}</span></div>` : ''}
+            </div>`;
+        }
+        
+        let sketchBadge = photo.isSketch ? '<span class="sketch-tag">ФОТОЗАРИСОВКА</span>' : '';
+        let modelTag = photo.model ? `<span class="sketch-tag"><i class="fas fa-tag"></i> ${photo.model}</span>` : '';
+        
+        let html = `
+            <div class="section photo-page">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+                    <h2 style="border-left-color:${photo.status === 'approved' ? '#00cc66' : '#e67e22'}; font-size:1rem;">${photo.vehicle}</h2>
+                    <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                        ${modelTag}
+                        ${sketchBadge}
+                        <span class="status-badge ${getBadgeClass(photo.status)}" style="position:static;">${getStatusText(photo.status)}</span>
+                    </div>
+                </div>
+                <div class="photo-page-main">
+                    <div class="photo-page-image">
+                        <img src="${photo.url}" alt="${photo.vehicle}" loading="lazy">
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; font-size:0.8rem; color:#d4c8f0;">
+                            <div><i class="fas fa-user"></i> АВТОР: <span style="color:#a86eff;cursor:pointer; font-weight:700;" onclick="showUserProfile('${photo.userId}')">${author?.name || '?'}</span></div>
+                            <div><i class="fas fa-calendar-alt"></i> ${new Date(photo.createdAt).toLocaleDateString()}</div>
+                            <div>${getFlag(photo.loc.country)} ${formatLoc(photo.loc)}</div>
+                        </div>
+                        ${mapLink}
+                        ${modActions}
+                        ${adminActions}
+                    </div>
+                    <div class="photo-page-sidebar">
+                        <div class="info-block">
+                            <h4><i class="fas fa-thumbs-up"></i> ОЦЕНКИ</h4>
+                            <div class="rating-summary">
+                                <div class="rating-item likes"><i class="fas fa-thumbs-up"></i> <span class="num">${photo.likes || 0}</span></div>
+                                <div class="rating-item dislikes"><i class="fas fa-thumbs-down"></i> <span class="num">${photo.dislikes || 0}</span></div>
+                                <div class="rating-item views"><i class="fas fa-eye"></i> <span class="num">${photo.views || 0}</span></div>
+                            </div>
+                            <div class="vote-buttons">
+                                ${currentUser ? (canVote ? 
+                                    `<button class="vote-btn vote-up vote-big ${userVote === 1 ? 'vote-active-up' : ''}" onclick="quickVote('${photo.id}', 1)"><i class="fas fa-plus"></i> ${photo.likes || 0}</button>
+                                     <button class="vote-btn vote-down vote-big ${userVote === -1 ? 'vote-active-down' : ''}" onclick="quickVote('${photo.id}', -1)"><i class="fas fa-minus"></i> ${photo.dislikes || 0}</button>` 
+                                    : `<span style="color:#ff0040; font-size:0.8rem; font-weight:700;">ГОЛОСОВАНИЕ ЗАПРЕЩЕНО</span>`) 
+                                : `<span style="font-size:0.8rem; color:#8870aa; font-weight:700;">ВОЙДИТЕ ЧТОБЫ ГОЛОСОВАТЬ</span>`}
+                            </div>
+                        </div>
+                        
+                        <div class="info-block">
+                            <h4><i class="fas fa-info-circle"></i> ИНФОРМАЦИЯ О ТС</h4>
+                            ${extraInfoHtml}
+                            <div class="collapse-trigger" onclick="toggleCollapse('${collapseId}')">
+                                <span><i class="fas fa-chevron-down" id="icon_${collapseId}"></i> ПОДРОБНЕЕ</span>
+                                <span class="vehicle-state-badge ${getStateClass(profile.state)}"><i class="fas ${getStateIcon(profile.state)}"></i> ${getStateText(profile.state)}</span>
+                            </div>
+                            <div class="collapse-content" id="${collapseId}">
+                                <table>
+                                    <tr><td>МОДЕЛЬ</td><td>${profile.model || '—'}</td></tr>
+                                    <tr><td>ГОД</td><td>${profile.year || '—'}</td></tr>
+                                    <tr><td>ДВИГАТЕЛЬ</td><td>${profile.engine || '—'}</td></tr>
+                                    <tr><td>МОЩНОСТЬ</td><td>${profile.power || '—'}</td></tr>
+                                    <tr><td>КУЗОВ</td><td>${profile.body || '—'}</td></tr>
+                                    <tr><td>ПРИВОД</td><td>${profile.drive || '—'}</td></tr>
+                                    <tr><td>НАЗНАЧЕНИЕ</td><td>${profile.purpose || '—'}</td></tr>
+                                </table>
+                                <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+                                    ${canEditUsers(currentUser) ? `<button class="btn" onclick="editVehicleProfile('${escapeHtml(photo.vehicle)}')">РЕДАКТИРОВАТЬ ТС</button>` : `<button class="btn" onclick="requestVehicleEdit('${escapeHtml(photo.vehicle)}')">ПРЕДЛОЖИТЬ ИЗМЕНЕНИЕ</button>`}
+                                    <button class="btn" onclick="showVehiclePage('${escapeHtml(photo.vehicle)}')">ВСЕ ФОТО ТС</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        ${exifHtml ? `<div class="info-block"><h4><i class="fas fa-camera"></i> EXIF ДАННЫЕ</h4>${exifHtml}</div>` : ''}
+                        
+                        <div class="info-block">
+                            <h4><i class="fas fa-comments"></i> КОММЕНТАРИИ (${photoComments.length})</h4>
+                            <div id="fsComments">${photoComments.map(c => {
+                                let commentAuthor = users.find(u => u.id === c.userId);
+                                let canDelete = (currentUser && (currentUser.id === c.userId || canModerate(currentUser)));
+                                return `<div class="comment"><strong>${commentAuthor?.name || '?'}</strong>: ${c.text} ${canDelete ? `<button class="del-comment" onclick="deleteComment('${c.id}')" style="background:none;border:none;color:#ff0040;cursor:pointer;padding:2px 6px;font-weight:700;"><i class="fas fa-trash-alt"></i></button>` : ''}</div>`;
+                            }).join('')}</div>
+                            ${currentUser ? (canComment ? `<div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;"><input id="photoPageCommentInput" placeholder="НАПИСАТЬ КОММЕНТАРИЙ..." style="flex:1; min-width:120px; padding:8px 14px; background:#0a0715; border:2px solid #3a1a6a; color:#d4c8f0; font-size:0.85rem; clip-path:polygon(0 0,100% 0,98% 100%,0 100%);"><button class="btn btn-success" onclick="addPhotoPageComment('${photo.id}')">ОТПРАВИТЬ</button></div>` : `<p style="color:#ff0040; font-size:0.8rem; font-weight:700;">КОММЕНТИРОВАНИЕ ЗАПРЕЩЕНО</p>`) : `<p style="font-size:0.8rem; color:#8870aa; font-weight:700;">ВОЙДИТЕ ЧТОБЫ КОММЕНТИРОВАТЬ</p>`}
+                        </div>
+                        
+                        ${similar.length ? `<div class="info-block"><h4><i class="fas fa-images"></i> ПОХОЖИЕ ФОТО</h4><div class="similar-photos">${similar.map(p => `<img src="${p.thumb}" onclick="showPhotoPage('${p.id}')" title="${p.vehicle}" loading="lazy">`).join('')}</div></div>` : ''}
+                    </div>
+                </div>
+                <button class="btn" onclick="renderHome()" style="align-self:flex-start;"><i class="fas fa-arrow-left"></i> НА ГЛАВНУЮ</button>
+            </div>
+        `;
+        document.getElementById('mainContent').innerHTML = html;
+        setTimeout(() => {
+            let el = document.getElementById(collapseId);
+            if (el) { el.classList.add('open'); document.getElementById('icon_' + collapseId).className = 'fas fa-chevron-up'; }
+        }, 100);
+    }
+    
+    function toggleCollapse(id) {
+        let el = document.getElementById(id);
+        let icon = document.getElementById('icon_' + id);
+        if (el) {
+            el.classList.toggle('open');
+            if (icon) icon.className = el.classList.contains('open') ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
+        }
+    }
+    
+    async function addPhotoPageComment(id) {
+        let text = document.getElementById('photoPageCommentInput')?.value;
+        if (text && currentUser && canUserComment(currentUser)) {
+            let newComment = { id: 'c' + Date.now() + '_' + Math.random().toString(36).substr(2, 6), photoId: id, userId: currentUser.id, text: text.toUpperCase(), createdAt: Date.now() };
+            await putToStore('comments', newComment);
+            comments.push(newComment);
+            showPhotoPage(id);
+        } else if (!canUserComment(currentUser)) alert('КОММЕНТИРОВАНИЕ ЗАПРЕЩЕНО');
+    }
+    
+    // ========== ОБНОВЛЕНИЕ ВИДОВ ==========
+    function refreshCurrentView() {
+        if (window.currentView === 'home') { renderHome(); filterGallery(); }
+        else if (window.currentView === 'city') showCityPhotos(window.currentCity);
+        else if (window.currentView === 'country') showCountryPhotos(window.currentCountry);
+        else if (window.currentView === 'vehicle') showVehiclePage(window.currentVehicle);
+        else if (window.currentView === 'profile') showUserProfile(window.currentProfileId);
+        else if (window.currentView === 'admin') showAdminPanel();
+        else if (window.currentView === 'contest') showContest();
+        else if (window.currentView === 'notifications') showNotifications();
+        else if (window.currentView === 'journal') showJournal();
+        else if (window.currentView === 'photopage') showPhotoPage(window.currentPhotoId);
+        else if (window.currentView === 'sketchgallery') showSketchGallery();
+    }
+    
+    function filterGallery() {
+        let term = document.getElementById('searchInput')?.value.toLowerCase() || '';
+        let modelFilter = document.getElementById('modelFilter')?.value || '';
+        let countryFilter = document.getElementById('countryFilter')?.value || '';
+        let typeFilter = document.getElementById('typeFilter')?.value || 'all';
+        
+        let visible = allPhotos.filter(p => p.status === 'approved');
+        if (term) visible = visible.filter(p => p.vehicle.toLowerCase().includes(term) || (p.loc.country || '').toLowerCase().includes(term) || (p.loc.city || '').toLowerCase().includes(term) || (p.model || '').toLowerCase().includes(term));
+        if (modelFilter) visible = visible.filter(p => (p.model || '').toLowerCase() === modelFilter.toLowerCase());
+        if (countryFilter) visible = visible.filter(p => (p.loc.country || '').toLowerCase() === countryFilter.toLowerCase());
+        if (typeFilter === 'sketch') visible = visible.filter(p => p.isSketch === true);
+        else if (typeFilter === 'photo') visible = visible.filter(p => p.isSketch !== true);
+        
+        let grid = document.getElementById('galleryGrid');
+        if (grid) grid.innerHTML = visible.slice(0, 24).map(p => photoCard(p)).join('') || '<div style="text-align:center; padding:20px; color:#8870aa; font-weight:700;">НЕТ ФОТО ПО ЗАДАННЫМ ФИЛЬТРАМ</div>';
+    }
+    
+    // ========== ГАЛЕРЕЯ ФОТОЗАРИСОВОК ==========
+    function showSketchGallery() {
+        window.currentView = 'sketchgallery';
+        let sketches = allPhotos.filter(p => p.status === 'approved' && p.isSketch === true);
+        document.getElementById('mainContent').innerHTML = `
+            <div class="section sketch-gallery">
+                <h2 style="font-size:1rem;"><i class="fas fa-paint-brush"></i> ГАЛЕРЕЯ ФОТОЗАРИСОВОК</h2>
+                <p style="font-size:0.8rem; color:#8870aa; margin-bottom:10px; font-weight:600;">ХУДОЖЕСТВЕННЫЕ КАДРЫ, АТМОСФЕРНЫЕ СНИМКИ И НЕОБЫЧНЫЕ РАКУРСЫ</p>
+                <div class="photo-grid">${sketches.map(p => photoCard(p)).join('') || '<div style="text-align:center; padding:20px; color:#8870aa; font-weight:700;">НЕТ ФОТОЗАРИСОВОК</div>'}</div>
+                <button class="btn" onclick="renderHome()" style="margin-top:10px;">НА ГЛАВНУЮ</button>
+            </div>
+        `;
+    }
+    
+    // ========== СТРАНИЦЫ ==========
+    function showContest() {
+        window.currentView = 'contest';
+        let topPhotos = [...allPhotos.filter(p => p.status === 'approved')].sort((a,b) => b.rating - a.rating).slice(0, 6);
+        document.getElementById('mainContent').innerHTML = `<div class="section"><h2 style="font-size:1rem;"><i class="fas fa-trophy"></i> КОНКУРС ЛУЧШИХ ФОТО</h2><p style="margin-bottom:10px; font-size:0.85rem; color:#8870aa; font-weight:600;">ТОП-6 ФОТОГРАФИЙ ПО РЕЙТИНГУ! ГОЛОСУЙТЕ ЗА ЛУЧШИЕ РАБОТЫ.</p><div class="photo-grid">${topPhotos.map(p => photoCard(p)).join('') || '<div style="color:#8870aa; font-weight:700;">НЕТ ФОТО</div>'}</div><button class="btn" onclick="renderHome()">НА ГЛАВНУЮ</button></div>`;
+    }
+    
+    async function showNotifications() {
+        window.currentView = 'notifications';
+        let myNotifs = notifications.filter(n => n.userId === currentUser.id).reverse();
+        for (let n of myNotifs) { if (!n.read) { n.read = true; await putToStore('notifications', n); } }
+        notifications = notifications.map(n => n.userId === currentUser.id ? { ...n, read: true } : n);
+        updateNotifBadge();
+        document.getElementById('mainContent').innerHTML = `<div class="section"><h2 style="font-size:1rem;"><i class="fas fa-bell"></i> УВЕДОМЛЕНИЯ</h2>${myNotifs.length ? myNotifs.map(n => `<div class="user-card"><strong style="color:#a86eff;">${n.title}</strong><br>${n.message}<br><small style="color:#8870aa;">${new Date(n.createdAt).toLocaleString()}</small></div>`).join('') : '<p style="color:#8870aa; font-weight:700;">НЕТ УВЕДОМЛЕНИЙ</p>'}<button class="btn" onclick="renderHome()">НА ГЛАВНУЮ</button></div>`;
+    }
+    
+    function renderHome() {
+        window.currentView = 'home';
+        let visible = allPhotos.filter(p => p.status === 'approved');
+        let countries = [...new Set(visible.map(p => p.loc?.country).filter(Boolean))];
+        let models = [...new Set(visible.map(p => p.model || p.vehicle).filter(Boolean))];
+        let timeline = [...visible].sort((a,b) => b.createdAt - a.createdAt).slice(0,5).map(p => ({ date: new Date(p.createdAt).toLocaleDateString(), text: `НОВОЕ ФОТО: ${p.vehicle}`, id: p.id }));
+        let photographerStats = {};
+        visible.forEach(p => { photographerStats[p.userId] = (photographerStats[p.userId] || 0) + 1; });
+        let topPhotographers = Object.entries(photographerStats).sort((a,b) => b[1] - a[1]).slice(0,5).map(([userId, count]) => ({ user: users.find(u => u.id === userId), count }));
+        let newThumbs = [...visible].sort((a,b) => b.createdAt - a.createdAt).slice(0,6);
+        let sketchCount = allPhotos.filter(p => p.status === 'approved' && p.isSketch === true).length;
+        
+        let html = `
+            <div class="section">
+                <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">
+                    <button class="btn btn-primary" onclick="showSketchGallery()" style="font-size:0.8rem;"><i class="fas fa-paint-brush"></i> ФОТОЗАРИСОВКИ (${sketchCount})</button>
+                    <button class="btn btn-purple" onclick="showRandomPhoto()" style="font-size:0.8rem;"><i class="fas fa-random"></i> СЛУЧАЙНОЕ ФОТО</button>
+                    <button class="btn btn-gold" onclick="showModelStats()" style="font-size:0.8rem;"><i class="fas fa-chart-bar"></i> ТОП-МОДЕЛИ</button>
+                </div>
+            </div>
+            <div class="section">
+                <h3 style="font-size:0.95rem;"><i class="fas fa-search"></i> РАСШИРЕННЫЙ ПОИСК</h3>
+                <div class="search-row">
+                    <input type="text" id="searchInput" placeholder="НАЗВАНИЕ, СТРАНА, ГОРОД..." style="padding:10px; background:#0a0715; border:2px solid #3a1a6a; color:#d4c8f0; font-size:0.9rem; clip-path:polygon(0 0,100% 0,98% 100%,0 100%);" oninput="filterGallery()">
+                    <select id="modelFilter" style="padding:10px; background:#0a0715; border:2px solid #3a1a6a; color:#d4c8f0; font-size:0.9rem; clip-path:polygon(0 0,100% 0,98% 100%,0 100%);" onchange="filterGallery()">
+                        <option value="">ВСЕ МОДЕЛИ</option>
+                        ${models.map(m => `<option value="${escapeHtml(m)}">${m}</option>`).join('')}
+                    </select>
+                    <select id="countryFilter" style="padding:10px; background:#0a0715; border:2px solid #3a1a6a; color:#d4c8f0; font-size:0.9rem; clip-path:polygon(0 0,100% 0,98% 100%,0 100%);" onchange="filterGallery()">
+                        <option value="">ВСЕ СТРАНЫ</option>
+                        ${countries.map(c => `<option value="${escapeHtml(c)}">${c}</option>`).join('')}
+                    </select>
+                    <select id="typeFilter" style="padding:10px; background:#0a0715; border:2px solid #3a1a6a; color:#d4c8f0; font-size:0.9rem; clip-path:polygon(0 0,100% 0,98% 100%,0 100%);" onchange="filterGallery()">
+                        <option value="all">ВСЕ ТИПЫ</option>
+                        <option value="photo">ФОТО</option>
+                        <option value="sketch">ФОТОЗАРИСОВКИ</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:6px;">
+                    <span style="font-size:0.65rem; color:#8870aa; padding:4px 0; font-weight:700;">ПОПУЛЯРНЫЕ МОДЕЛИ:</span>
+                    ${models.slice(0, 10).map(m => `<span class="model-filter-chip" onclick="document.getElementById('modelFilter').value='${escapeHtml(m)}'; filterGallery();">${m}</span>`).join('')}
+                </div>
+                <div id="galleryGrid" class="photo-grid" style="margin-top:12px;"></div>
+            </div>
+            <div class="main-two-columns">
+                <div class="main-center">
+                    <div class="section"><h3 style="font-size:0.95rem;"><i class="fas fa-globe"></i> СТРАНЫ</h3><div class="country-list">${countries.map(c => `<div class="country-item" onclick="showCountryPhotos('${escapeHtml(c)}')">${getFlag(c)} ${c} <span style="margin-left:auto; color:#8870aa; font-size:0.75rem; font-weight:700;">(${visible.filter(p=>p.loc?.country===c).length})</span></div>`).join('')}</div></div>
+                </div>
+                <div class="main-sidebar">
+                    <div class="side-block"><h4><i class="fas fa-gavel"></i> ПРАВИЛА СООБЩЕСТВА</h4><div class="rules-text">
+                        <p><span class="rule-num">1.</span> ЗАГРУЖАЙТЕ ТОЛЬКО СВОИ ФОТО ЖЕЛЕЗНОДОРОЖНОГО ТРАНСПОРТА.</p>
+                        <p><span class="rule-num">2.</span> УКАЗЫВАЙТЕ ТОЧНОЕ МЕСТО СЪЁМКИ (СТРАНА, ГОРОД).</p>
+                        <p><span class="rule-num">3.</span> ЗАПРЕЩЕНЫ СКРИНШОТЫ И ФОТО ИЗ ИНТЕРНЕТА.</p>
+                        <p><span class="rule-num">4.</span> УВАЖАЙТЕ ДРУГИХ УЧАСТНИКОВ, БЕЗ ОСКОРБЛЕНИЙ.</p>
+                        <p><span class="rule-num">5.</span> НЕ СПАМЬТЕ И НЕ РЕКЛАМИРУЙТЕ ПОСТОРОННИЕ РЕСУРСЫ.</p>
+                        <p><span class="rule-num">6.</span> НАРУШЕНИЯ КАРАЮТСЯ БЛОКИРОВКОЙ ГОЛОСОВАНИЯ/КОММЕНТАРИЕВ.</p>
+                        <p><span class="rule-num">7.</span> АДМИНИСТРАЦИЯ ИМЕЕТ ПРАВО УДАЛЯТЬ ФОТО БЕЗ ОБЪЯСНЕНИЯ.</p>
+                        <p><span class="rule-num">8.</span> ФОТОЗАРИСОВКИ — ЭТО ХУДОЖЕСТВЕННЫЕ КАДРЫ С АТМОСФЕРОЙ.</p>
+                        <p><span class="rule-num">9.</span> ЗАПРЕЩЕНО ИСПОЛЬЗОВАТЬ ЧУЖИЕ ФОТО БЕЗ РАЗРЕШЕНИЯ.</p>
+                        <p><span class="rule-num">10.</span> ПРИ ЗАГРУЗКЕ ФОТО УКАЗЫВАЙТЕ ПРЕДПРИЯТИЕ/ВЛАДЕЛЬЦА ТС.</p>
+                    </div></div>
+                    <div class="side-block"><h4><i class="fas fa-history"></i> ХРОНОЛОГИЯ</h4>${timeline.map(e => `<div class="timeline-item"><div class="timeline-date">${e.date}</div><div style="cursor:pointer; color:#a86eff; font-weight:700;" onclick="showPhotoPage('${e.id}')">${e.text}</div></div>`).join('')}</div>
+                    <div class="side-block"><h4><i class="fas fa-camera"></i> АКТИВНЫЕ ФОТОГРАФЫ</h4>${topPhotographers.map(p => p.user ? `<div class="photographer-item" onclick="showUserProfile('${p.user.id}')"><i class="fas fa-user-circle" style="font-size:1.8rem; color:#a86eff;"></i><div><strong style="color:#d4c8f0;">${p.user.name}</strong><br><small style="color:#8870aa; font-weight:700;">${p.count} ФОТО</small></div></div>` : '').join('')}</div>
+                    <div class="side-block"><h4><i class="fas fa-images"></i> НОВЫЕ ФОТО</h4><div class="thumb-strip-small">${newThumbs.map(p => `<img src="${p.thumb}" onclick="showPhotoPage('${p.id}')" loading="lazy">`).join('')}</div></div>
+                </div>
+            </div>
+        </div>`;
+        document.getElementById('mainContent').innerHTML = html;
+        filterGallery();
+    }
+    
+    function showCityPhotos(city) {
+        window.currentView = 'city'; window.currentCity = city;
+        let photos = allPhotos.filter(p => p.status === 'approved' && p.loc?.city === city);
+        let country = photos[0]?.loc?.country || '';
+        document.getElementById('mainContent').innerHTML = `<div class="section"><div style="display:flex; align-items:baseline; gap:8px; margin-bottom:10px; flex-wrap:wrap;"><h2 style="font-size:1rem;"><i class="fas fa-city"></i> ${city}</h2><span style="color:#a86eff; cursor:pointer; font-size:0.8rem; font-weight:700;" onclick="showCountryPhotos('${escapeHtml(country)}')">← ВСЕ ФОТО СТРАНЫ ${country}</span></div><div class="photo-grid">${photos.map(p => photoCard(p)).join('') || '<div style="color:#8870aa; font-weight:700;">НЕТ ФОТО</div>'}</div><button class="btn" onclick="renderHome()">НА ГЛАВНУЮ</button></div>`;
+    }
+    
+    function showCountryPhotos(country) {
+        window.currentView = 'country'; window.currentCountry = country;
+        let photos = allPhotos.filter(p => p.status === 'approved' && p.loc?.country === country);
+        let cities = [...new Set(photos.map(p => p.loc?.city).filter(Boolean))];
+        document.getElementById('mainContent').innerHTML = `<div class="section"><h2 style="font-size:1rem;">${getFlag(country)} ${country}</h2><div class="filter-bar">${cities.map(c => `<span class="filter-chip" onclick="showCityPhotos('${escapeHtml(c)}')">${c} (${photos.filter(p=>p.loc?.city===c).length})</span>`).join('')}</div><div class="photo-grid">${photos.map(p => photoCard(p)).join('') || '<div style="color:#8870aa; font-weight:700;">НЕТ ФОТО</div>'}</div><button class="btn" onclick="renderHome()">НА ГЛАВНУЮ</button></div>`;
+    }
+    
+    function showVehiclePage(vehicle) {
+        window.currentView = 'vehicle'; window.currentVehicle = vehicle;
+        let photos = allPhotos.filter(p => p.status === 'approved' && p.vehicle === vehicle);
+        let profile = vehiclesProfiles[vehicle] || { model: vehicle, year: '—', engine: '—', state: 'unknown', purpose: '—' };
+        let isAdmin = canEditUsers(currentUser);
+        document.getElementById('mainContent').innerHTML = `<div class="section"><h2 style="font-size:1rem;"><i class="fas fa-train"></i> ${vehicle}</h2>
+            <div style="background:#0d0a1a; padding:14px; border:2px solid #3a1a6a; clip-path:polygon(0 0,100% 0,98% 100%,0 100%); margin-bottom:12px;">
+                <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); gap:8px; font-size:0.8rem; color:#d4c8f0;">
+                    <div><strong style="color:#a86eff;">МОДЕЛЬ:</strong> ${profile.model}</div>
+                    <div><strong style="color:#a86eff;">ГОД:</strong> ${profile.year}</div>
+                    <div><strong style="color:#a86eff;">ДВИГАТЕЛЬ:</strong> ${profile.engine}</div>
+                    <div><strong style="color:#a86eff;">МОЩНОСТЬ:</strong> ${profile.power || '—'}</div>
+                    <div><strong style="color:#a86eff;">КУЗОВ:</strong> ${profile.body || '—'}</div>
+                    <div><strong style="color:#a86eff;">ПРИВОД:</strong> ${profile.drive || '—'}</div>
+                    <div><strong style="color:#a86eff;">ЦВЕТ:</strong> ${profile.color || '—'}</div>
+                    <div><strong style="color:#a86eff;">ПРОБЕГ:</strong> ${profile.mileage || '—'}</div>
+                    <div><strong style="color:#a86eff;">ПРЕДПРИЯТИЕ:</strong> ${profile.company || '—'}</div>
+                    <div><strong style="color:#a86eff;">ГОС. НОМЕР:</strong> ${profile.plate || '—'}</div>
+                    <div><strong style="color:#a86eff;">VIN:</strong> ${profile.vin || '—'}</div>
+                    <div><strong style="color:#a86eff;">СОСТОЯНИЕ:</strong> <span class="vehicle-state-badge ${getStateClass(profile.state)}"><i class="fas ${getStateIcon(profile.state)}"></i> ${getStateText(profile.state)}</span></div>
+                </div>
+                <div style="margin-top:10px;">${isAdmin ? `<button class="btn" onclick="editVehicleProfile('${escapeHtml(vehicle)}')">РЕДАКТИРОВАТЬ ТС</button>` : `<button class="btn" onclick="requestVehicleEdit('${escapeHtml(vehicle)}')">ПРЕДЛОЖИТЬ ИЗМЕНЕНИЕ</button>`}</div>
+            </div>
+            <h3 style="font-size:0.95rem;">ФОТОГРАФИИ (${photos.length})</h3>
+            <div class="photo-grid">${photos.map(p => photoCard(p)).join('') || '<div style="color:#8870aa; font-weight:700;">НЕТ ФОТО</div>'}</div>
+            <button class="btn" onclick="renderHome()">НА ГЛАВНУЮ</button></div>`;
+    }
+    
+    function showUserProfile(userId) {
+        window.currentView = 'profile'; window.currentProfileId = userId;
+        let user = users.find(u => u.id === userId);
+        if (!user) return;
+        let userPhotos = allPhotos.filter(p => p.userId === userId && p.status === 'approved');
+        let isOwn = currentUser?.id === userId;
+        let isAdmin = canEditUsers(currentUser);
+        let canManage = isAdmin && !isOwn;
+        document.getElementById('mainContent').innerHTML = `<div class="section">
+            <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
+                <div style="font-size:3.5rem; color:#a86eff;"><i class="fas fa-user-circle"></i></div>
+                <div><h3 style="font-size:1rem; color:#d4c8f0;">${user.name}</h3><div style="font-size:0.8rem; color:#8870aa;">${user.email}</div><div style="font-size:0.8rem; color:#d4c8f0;">РОЛЬ: ${user.role === 'admin' ? 'АДМИНИСТРАТОР' : (user.role === 'moderator' ? 'ФОТОМОДЕРАТОР' : 'ПОЛЬЗОВАТЕЛЬ')}</div><div style="font-size:0.8rem; color:#d4c8f0;">ФОТО: ${userPhotos.length}</div><div style="font-size:0.8rem; color:#d4c8f0;">ГОЛОСОВАНИЕ: ${user.banVote ? 'ЗАПРЕЩЕНО' : 'РАЗРЕШЕНО'}</div><div style="font-size:0.8rem; color:#d4c8f0;">КОММЕНТАРИИ: ${user.banComment ? 'ЗАПРЕЩЕНЫ' : 'РАЗРЕШЕНЫ'}</div></div>
+            </div>
+            ${user.bio ? `<div style="background:#0d0a1a; padding:10px; border-left:4px solid #a86eff; font-size:0.8rem; color:#d4c8f0; clip-path:polygon(0 0,100% 0,98% 100%,0 100%); margin-bottom:10px;"><strong style="color:#a86eff;">О СЕБЕ:</strong><br>${escapeHtml(user.bio)}</div>` : ''}
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(130px,1fr)); gap:6px; margin-bottom:10px;">
+                ${user.city ? `<div class="profile-field"><div class="profile-label">ГОРОД</div><div class="profile-value" style="color:#d4c8f0;">${escapeHtml(user.city)}</div></div>` : ''}
+                ${user.website ? `<div class="profile-field"><div class="profile-label">САЙТ</div><div class="profile-value"><a href="${escapeHtml(user.website)}" target="_blank" style="color:#a86eff;">${escapeHtml(user.website)}</a></div></div>` : ''}
+                ${user.telegram ? `<div class="profile-field"><div class="profile-label">TELEGRAM</div><div class="profile-value" style="color:#d4c8f0;">${escapeHtml(user.telegram)}</div></div>` : ''}
+            </div>
+            ${isOwn ? `<button class="btn" onclick="editProfile()">РЕДАКТИРОВАТЬ ПРОФИЛЬ</button>` : ''}
+            ${canManage ? `<div style="margin-top:10px; padding:10px; background:#0d0a1a; border:2px solid #3a1a6a; clip-path:polygon(0 0,100% 0,98% 100%,0 100%);"><h4 style="font-size:0.85rem; color:#a86eff;">АДМИНИСТРИРОВАНИЕ</h4><div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;"><button class="btn ${user.banVote ? 'btn-success' : 'btn-danger'}" onclick="toggleBanVote('${user.id}')">${user.banVote ? 'СНЯТЬ ЗАПРЕТ ГОЛОСОВАНИЯ' : 'ЗАПРЕТИТЬ ГОЛОСОВАНИЕ'}</button><button class="btn ${user.banComment ? 'btn-success' : 'btn-danger'}" onclick="toggleBanComment('${user.id}')">${user.banComment ? 'СНЯТЬ ЗАПРЕТ КОММЕНТАРИЕВ' : 'ЗАПРЕТИТЬ КОММЕНТАРИИ'}</button><button class="btn btn-danger" onclick="if(confirm('УДАЛИТЬ ПОЛЬЗОВАТЕЛЯ?')) deleteUser('${user.id}')">УДАЛИТЬ ПОЛЬЗОВАТЕЛЯ</button></div></div>` : ''}
+            <h3 style="font-size:0.95rem; margin-top:10px;">ФОТОГРАФИИ ПОЛЬЗОВАТЕЛЯ</h3>
+            <div class="photo-grid">${userPhotos.map(p => photoCard(p)).join('') || '<div style="color:#8870aa; font-weight:700;">НЕТ ФОТО</div>'}</div>
+            <button class="btn" onclick="renderHome()" style="margin-top:10px;">НА ГЛАВНУЮ</button>
+        </div>`;
+    }
+    
+    // ========== ЗАГРУЗКА ==========
+    function showUploadForm() {
+        window.currentView = 'upload';
+        document.getElementById('mainContent').innerHTML = `<div class="section"><h2 style="font-size:1rem;"><i class="fas fa-cloud-upload-alt"></i> ЗАГРУЗКА ФОТО</h2>
+            <div class="form-group"><label>ФАЙЛ</label><input type="file" id="uploadFile" accept="image/jpeg,image/png,image/webp"></div>
+            <div class="form-group"><label>ТРАНСПОРТ</label><input id="uploadVehicle" placeholder="НАПРИМЕР: ЭП20"></div>
+            <div class="form-group"><label>МОДЕЛЬ (ДЛЯ ФИЛЬТРА)</label><input id="uploadModel" placeholder="НАПРИМЕР: ЭП20"></div>
+            <div class="form-group"><label>СТРАНА</label><input id="uploadCountry" placeholder="СТРАНА"></div>
+            <div class="form-group"><label>ГОРОД</label><input id="uploadCity" placeholder="ГОРОД"></div>
+            <div class="form-group"><label>УЛИЦА</label><input id="uploadStreet" placeholder="УЛИЦА"></div>
+            <div class="form-group"><label>ТИП ФОТО</label><select id="uploadType"><option value="false">ОБЫЧНОЕ</option><option value="true">ФОТОЗАРИСОВКА</option></select></div>
+            <div class="form-group"><label>ОТМЕТЬТЕ МЕСТО СЪЁМКИ НА КАРТЕ (КЛИКНИТЕ ПО КАРТЕ)</label>
+                <div class="map-container" id="uploadMap" style="height:220px;"></div>
+                <input type="hidden" id="uploadLat" value="0">
+                <input type="hidden" id="uploadLng" value="0">
+            </div>
+            <button class="btn btn-success" onclick="doUpload()">ОТПРАВИТЬ НА МОДЕРАЦИЮ</button>
+        </div>`;
+        setTimeout(() => {
+            try {
+                const map = L.map('uploadMap').setView([55.76, 37.64], 10);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                }).addTo(map);
+                let marker = null;
+                map.on('click', function(e) {
+                    if (marker) map.removeLayer(marker);
+                    marker = L.marker(e.latlng).addTo(map);
+                    document.getElementById('uploadLat').value = e.latlng.lat;
+                    document.getElementById('uploadLng').value = e.latlng.lng;
+                    showToast('КООРДИНАТЫ УСТАНОВЛЕНЫ');
+                });
+                setTimeout(() => map.invalidateSize(), 200);
+            } catch(e) { console.error('ОШИБКА КАРТЫ ЗАГРУЗКИ:', e); }
+        }, 200);
+    }
+    
+    async function doUpload() {
+        let file = document.getElementById('uploadFile').files[0];
+        if (!file) { alert('ВЫБЕРИТЕ ФАЙЛ'); return; }
+        let vehicle = document.getElementById('uploadVehicle').value.trim().toUpperCase();
+        if (!vehicle) { alert('ВВЕДИТЕ НАЗВАНИЕ ТРАНСПОРТА'); return; }
+        let model = document.getElementById('uploadModel').value.trim().toUpperCase() || vehicle;
+        let lat = parseFloat(document.getElementById('uploadLat').value);
+        let lng = parseFloat(document.getElementById('uploadLng').value);
+        if (!lat || !lng) { alert('ОТМЕТЬТЕ МЕСТО СЪЁМКИ НА КАРТЕ'); return; }
+        
+        const btn = event.target;
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> ЗАГРУЗКА...';
+        
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const newPhoto = {
+                    id: 'p' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                    userId: currentUser.id,
+                    url: e.target.result,
+                    thumb: e.target.result,
+                    vehicle: vehicle,
+                    model: model,
+                    loc: {
+                        country: document.getElementById('uploadCountry').value.toUpperCase(),
+                        city: document.getElementById('uploadCity').value.toUpperCase(),
+                        street: document.getElementById('uploadStreet').value.toUpperCase(),
+                        lat: lat, lng: lng
+                    },
+                    status: 'pending',
+                    rating: 0, likes: 0, dislikes: 0, views: 0,
+                    createdAt: Date.now(),
+                    moderationNote: '',
+                    exif: {},
+                    isSketch: document.getElementById('uploadType').value === 'true'
+                };
+                await putToStore('photos', newPhoto);
+                allPhotos.push(newPhoto);
+                if (!vehiclesProfiles[vehicle]) {
+                    vehiclesProfiles[vehicle] = { vehicle: vehicle, model: model, year: '—', engine: '—', state: 'unknown', purpose: '—', company: '—', plate: '—', vin: '—', color: '—', mileage: '—' };
+                    await putToStore('vehiclesProfiles', vehiclesProfiles[vehicle]);
+                }
+                let moderators = users.filter(u => u.role === 'admin' || u.role === 'moderator');
+                for (let mod of moderators) {
+                    await addNotification(mod.id, 'НОВОЕ ФОТО', `ПОЛЬЗОВАТЕЛЬ ${currentUser.name} ЗАГРУЗИЛ ${newPhoto.isSketch ? 'ФОТОЗАРИСОВКУ' : 'ФОТО'}: ${vehicle}`);
+                }
+                showToast('ФОТО ОТПРАВЛЕНО НА МОДЕРАЦИЮ');
+                document.getElementById('uploadFile').value = '';
+                document.getElementById('uploadVehicle').value = '';
+                document.getElementById('uploadModel').value = '';
+                document.getElementById('uploadCountry').value = '';
+                document.getElementById('uploadCity').value = '';
+                document.getElementById('uploadStreet').value = '';
+                renderHome();
+            } catch(err) { alert('ОШИБКА ПРИ ЗАГРУЗКЕ: ' + err.message); }
+            finally { btn.disabled = false; btn.innerHTML = 'ОТПРАВИТЬ НА МОДЕРАЦИЮ'; }
+        };
+        reader.onerror = function() { 
+            alert('ОШИБКА ЧТЕНИЯ ФАЙЛА'); 
+            btn.disabled = false; 
+            btn.innerHTML = 'ОТПРАВИТЬ НА МОДЕРАЦИЮ'; 
+        };
+        reader.readAsDataURL(file);
+    }
+    
+    function showJournal() { window.currentView = 'journal'; let myPhotos = allPhotos.filter(p => p.userId === currentUser.id); document.getElementById('mainContent').innerHTML = `<div class="section"><h2 style="font-size:1rem;"><i class="fas fa-history"></i> МОЙ ЖУРНАЛ</h2><div class="photo-grid">${myPhotos.map(p => photoCard(p)).join('') || '<div style="color:#8870aa; font-weight:700;">НЕТ ФОТО</div>'}</div><button class="btn" onclick="renderHome()">НА ГЛАВНУЮ</button></div>`; }
+    function showMyPhotos() { showJournal(); }
+    function showStatistics() { 
+        let approved = allPhotos.filter(p => p.status === 'approved'); 
+        let sketches = allPhotos.filter(p => p.status === 'approved' && p.isSketch === true);
+        let models = [...new Set(approved.map(p => p.model || p.vehicle))];
+        document.getElementById('mainContent').innerHTML = `<div class="section"><h2 style="font-size:1rem;"><i class="fas fa-chart-pie"></i> СТАТИСТИКА</h2>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-number">${approved.length}</div><div>ОДОБРЕНО</div></div>
+                <div class="stat-card"><div class="stat-number">${allPhotos.filter(p=>p.status==='pending').length}</div><div>НА МОДЕРАЦИИ</div></div>
+                <div class="stat-card"><div class="stat-number">${sketches.length}</div><div>ФОТОЗАРИСОВКИ</div></div>
+                <div class="stat-card"><div class="stat-number">${users.length}</div><div>ПОЛЬЗОВАТЕЛЕЙ</div></div>
+                <div class="stat-card"><div class="stat-number">${models.length}</div><div>МОДЕЛЕЙ</div></div>
+                <div class="stat-card"><div class="stat-number">${new Set(approved.map(p => p.loc?.country)).size}</div><div>СТРАН</div></div>
+            </div>
+            <button class="btn" onclick="renderHome()" style="margin-top:12px;">НА ГЛАВНУЮ</button></div>`; 
+    }
+    
+    function showSwitchUserPanel() { document.getElementById('mainContent').innerHTML = `<div class="section"><h2 style="font-size:1rem;"><i class="fas fa-exchange-alt"></i> СМЕНИТЬ ПОЛЬЗОВАТЕЛЯ</h2><div style="display:flex; flex-direction:column; gap:6px;">${users.map(u => `<div class="user-card" style="cursor:pointer; flex-direction:row;" onclick="switchToUser('${u.id}')"><i class="fas fa-user-circle" style="font-size:1.6rem; color:#a86eff;"></i> <strong style="color:#d4c8f0;">${u.name}</strong> <span style="color:#8870aa; font-size:0.75rem; font-weight:700;">(${u.email})</span> - ${u.role === 'admin' ? 'АДМИН' : (u.role === 'moderator' ? 'МОДЕРАТОР' : 'ПОЛЬЗОВАТЕЛЬ')}</div>`).join('')}</div><button class="btn" onclick="renderHome()">НА ГЛАВНУЮ</button></div>`; }
+    async function switchToUser(userId) { let user = users.find(u => u.id === userId); if (user) { currentUser = JSON.parse(JSON.stringify(user)); delete currentUser.password; saveSession(); showToast(`ПЕРЕКЛЮЧЕНО НА ${user.name}`); renderMainApp(); } }
+    
+    // ========== АДМИН-ПАНЕЛЬ ==========
+    async function showAdminPanel() {
+        if (!canModerate(currentUser)) return;
+        window.currentView = 'admin';
+        let pending = allPhotos.filter(p => p.status === 'pending');
+        let pendingRequests = editRequests.filter(r => r.status === 'pending');
+        let isFullAdmin = canEditUsers(currentUser);
+        
+        document.getElementById('mainContent').innerHTML = `<div class="section"><h2 style="font-size:1rem;"><i class="fas fa-cogs"></i> ПАНЕЛЬ МОДЕРАЦИИ</h2><div class="admin-stats"><div class="stat-card"><div class="stat-number">${allPhotos.length}</div><div>ВСЕГО ФОТО</div></div><div class="stat-card"><div class="stat-number">${pending.length}</div><div>НА МОДЕРАЦИИ</div></div>${isFullAdmin ? `<div class="stat-card"><div class="stat-number">${users.length}</div><div>ПОЛЬЗОВАТЕЛЕЙ</div></div><div class="stat-card"><div class="stat-number">${pendingRequests.length}</div><div>ЗАЯВКИ</div></div>` : ''}</div><div class="tabs"><button class="tab-btn active" onclick="switchAdminTab('moderation')">МОДЕРАЦИЯ (${pending.length})</button>${isFullAdmin ? `<button class="tab-btn" onclick="switchAdminTab('requests')">ЗАЯВКИ (${pendingRequests.length})</button><button class="tab-btn" onclick="switchAdminTab('users')">ПОЛЬЗОВАТЕЛИ</button>` : ''}<button class="tab-btn" onclick="switchAdminTab('all')">ВСЕ ФОТО</button><button class="tab-btn" onclick="switchAdminTab('comments')">КОММЕНТАРИИ (${comments.length})</button></div><div id="adminTabContent"></div><button class="btn" onclick="renderHome()" style="margin-top:10px;">НА ГЛАВНУЮ</button></div>`;
+        
+        window.switchAdminTab = function(tab) {
+            let content = document.getElementById('adminTabContent');
+            if (tab === 'moderation') content.innerHTML = `<div class="photo-grid">${pending.map(p => photoCard(p, true)).join('') || '<div style="color:#8870aa; font-weight:700;">НЕТ ФОТО</div>'}</div>`;
+            else if (tab === 'requests' && isFullAdmin) content.innerHTML = `<div>${pendingRequests.map(r => `<div class="user-card" style="flex-direction:column;"><div><strong style="color:#a86eff;">ТС:</strong> ${r.vehicleName}</div><div><strong style="color:#a86eff;">ПОЛЬЗОВАТЕЛЬ:</strong> ${r.userName}</div><div><strong style="color:#a86eff;">ОБОСНОВАНИЕ:</strong> ${r.reason || 'БЕЗ ПОЯСНЕНИЯ'}</div><div style="margin-top:6px; padding:6px; background:#0a0715; border:2px solid #3a1a6a; clip-path:polygon(0 0,100% 0,98% 100%,0 100%); font-size:0.8rem; color:#d4c8f0;">${Object.entries(r.changes).map(([k,v]) => `<div><strong style="color:#a86eff;">${k.toUpperCase()}:</strong> ${v || '—'}</div>`).join('')}</div><div style="margin-top:6px;"><button class="btn btn-success" onclick="approveEditRequest('${r.id}')">ОДОБРИТЬ</button><button class="btn btn-danger" onclick="rejectEditRequest('${r.id}')">ОТКЛОНИТЬ</button></div></div>`).join('') || '<div style="color:#8870aa; font-weight:700;">НЕТ ЗАЯВОК</div>'}</div>`;
+            else if (tab === 'users' && isFullAdmin) content.innerHTML = users.map(u => `<div class="user-card"><div class="user-row"><i class="fas fa-user-circle" style="font-size:1.8rem; color:#a86eff;"></i><div><strong style="color:#d4c8f0;">${u.name}</strong><br><small style="color:#8870aa;">${u.email}</small><br><span style="font-size:0.75rem; color:#d4c8f0;">РОЛЬ: ${u.role === 'admin' ? 'АДМИН' : (u.role === 'moderator' ? 'МОДЕРАТОР' : 'ПОЛЬЗОВАТЕЛЬ')}</span><br><span style="font-size:0.75rem; color:#d4c8f0;">ГОЛОСОВАНИЕ: ${u.banVote ? 'ЗАПРЕЩЕНО' : 'РАЗРЕШЕНО'}</span><br><span style="font-size:0.75rem; color:#d4c8f0;">КОММЕНТАРИИ: ${u.banComment ? 'ЗАПРЕЩЕНЫ' : 'РАЗРЕШЕНЫ'}</span></div></div><div class="user-actions"><select id="role_${u.id}" style="padding:3px 8px; background:#0a0715; border:2px solid #3a1a6a; color:#d4c8f0; font-size:0.7rem; clip-path:polygon(0 0,100% 0,90% 100%,0 100%);"><option ${u.role === 'user' ? 'selected' : ''}>user</option><option ${u.role === 'moderator' ? 'selected' : ''}>moderator</option><option ${u.role === 'admin' ? 'selected' : ''}>admin</option></select><button class="btn" onclick="changeUserRole('${u.id}', document.getElementById('role_${u.id}').value)">СОХРАНИТЬ</button><button class="btn ${u.banVote ? 'btn-success' : 'btn-warning'}" onclick="toggleBanVote('${u.id}')">ГОЛОСОВАНИЕ</button><button class="btn ${u.banComment ? 'btn-success' : 'btn-warning'}" onclick="toggleBanComment('${u.id}')">КОММЕНТАРИИ</button>${u.id !== currentUser.id ? `<button class="btn btn-danger" onclick="deleteUser('${u.id}')">УДАЛИТЬ</button>` : ''}</div></div>`).join('');
+            else if (tab === 'comments') {
+                content.innerHTML = `<div>${comments.map(c => {
+                    let photo = allPhotos.find(p => p.id === c.photoId);
+                    let author = users.find(u => u.id === c.userId);
+                    let canDelete = (currentUser.id === c.userId || canModerate(currentUser));
+                    return `<div class="comment"><div><strong>${author?.name || '?'}</strong>: ${c.text} <br><small style="color:#8870aa; font-weight:700;">К ФОТО: ${photo?.vehicle || '?'}</small></div><div class="comment-actions">${canDelete ? `<button class="del-comment" onclick="deleteComment('${c.id}')"><i class="fas fa-trash-alt"></i></button>` : ''}</div></div>`;
+                }).join('') || 'НЕТ КОММЕНТАРИЕВ'}</div>`;
+            }
+            else content.innerHTML = `<div class="photo-grid">${allPhotos.map(p => photoCard(p, false, true)).join('')}</div>`;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            if (event && event.target) event.target.classList.add('active');
+        };
+        switchAdminTab('moderation');
+    }
+    
+    async function changeUserRole(userId, newRole) { 
+        let user = users.find(u => u.id === userId);
+        if (user && canEditUsers(currentUser) && user.id !== currentUser.id) {
+            user.role = newRole;
+            await putToStore('users', user);
+            showToast(`РОЛЬ ИЗМЕНЕНА НА ${newRole === 'admin' ? 'АДМИНИСТРАТОР' : (newRole === 'moderator' ? 'МОДЕРАТОР' : 'ПОЛЬЗОВАТЕЛЬ')}`);
+            showAdminPanel();
+        }
+    }
+    
+    async function deleteUser(userId) { 
+        if (!canEditUsers(currentUser)) return;
+        if (userId === currentUser.id) { alert('НЕЛЬЗЯ УДАЛИТЬ СЕБЯ'); return; }
+        if (confirm('УДАЛИТЬ ПОЛЬЗОВАТЕЛЯ И ВСЕ ЕГО ФОТО?')) {
+            await deleteFromStore('users', userId);
+            users = users.filter(u => u.id !== userId);
+            const userPhotos = allPhotos.filter(p => p.userId === userId);
+            for (const p of userPhotos) await deleteFromStore('photos', p.id);
+            allPhotos = allPhotos.filter(p => p.userId !== userId);
+            votes = votes.filter(v => v.userId !== userId);
+            comments = comments.filter(c => c.userId !== userId);
+            notifications = notifications.filter(n => n.userId !== userId);
+            showToast('ПОЛЬЗОВАТЕЛЬ УДАЛЁН');
+            showAdminPanel();
+            renderHome();
+        }
+    }
+    
+    // ========== КАРТОЧКА ФОТО ==========
+    function photoCard(photo, showModActions = false, isAdminView = false) {
+        let author = users.find(u => u.id === photo.userId);
+        let userVote = getUserVote(photo.id);
+        let canVote = currentUser && canUserVote(currentUser);
+        let modActions = '';
+        if (showModActions && canModerate(currentUser) && photo.status === 'pending') {
+            modActions = `<div style="margin-top:6px; display:flex; gap:4px; flex-wrap:wrap;"><button class="btn btn-success" onclick="event.stopPropagation(); moderatePhoto('${photo.id}', 'approved', '')">ОДОБРИТЬ</button><button class="btn btn-warning" onclick="event.stopPropagation(); showModerationNoteModal('${photo.id}', 'conditional')">УСЛОВНО</button><button class="btn btn-danger" onclick="event.stopPropagation(); showModerationNoteModal('${photo.id}', 'rejected')">ОТКЛОНИТЬ</button></div>`;
+        }
+        let adminActions = '';
+        if ((isAdminView || showModActions) && canModerate(currentUser)) {
+            adminActions = `<div style="margin-top:6px; display:flex; gap:4px; flex-wrap:wrap;"><button class="btn" onclick="event.stopPropagation(); editPhoto('${photo.id}')">РЕДАКТИРОВАТЬ</button><button class="btn btn-danger" onclick="event.stopPropagation(); deletePhoto('${photo.id}')">УДАЛИТЬ</button></div>`;
+        }
+        let modNoteHtml = '';
+        if (photo.status === 'conditional' && photo.moderationNote) {
+            modNoteHtml = `<div class="moderation-note">ЗАМЕЧАНИЕ МОДЕРАТОРА: ${escapeHtml(photo.moderationNote)}</div>`;
+        }
+        let mapLink = '';
+        if (photo.loc && photo.loc.lat && photo.loc.lng) {
+            mapLink = `<div class="map-pin" onclick="event.stopPropagation(); showMapForPhoto('${photo.id}')"><i class="fas fa-map-pin"></i> ПОКАЗАТЬ МЕСТО СЪЁМКИ</div>`;
+        }
+        let sketchTag = photo.isSketch ? '<span class="sketch-tag">ФОТОЗАРИСОВКА</span>' : '';
+        let modelTag = photo.model ? `<span class="sketch-tag"><i class="fas fa-tag"></i> ${photo.model}</span>` : '';
+        return `<div class="photo-card" onclick="showPhotoPage('${photo.id}')">
+            <img src="${photo.thumb}" loading="lazy">
+            <div class="photo-info">
+                <div class="vehicle-name" onclick="event.stopPropagation(); showVehiclePage('${escapeHtml(photo.vehicle)}')">${photo.vehicle} ${sketchTag}</div>
+                <div style="font-size:0.7rem; color:#8870aa; font-weight:600;">${modelTag}</div>
+                <div style="font-size:0.8rem; color:#d4c8f0; font-weight:600;">${getFlag(photo.loc.country)} ${formatLoc(photo.loc)}</div>
+                ${mapLink}
+                ${modNoteHtml}
+                <div class="photo-stats"><span>АВТОР: <span onclick="event.stopPropagation(); showUserProfile('${photo.userId}')" style="cursor:pointer; color:#a86eff;">${author?.name || '?'}</span></span><span>ПРОСМОТРОВ: ${photo.views || 0}</span><span>КОММЕНТАРИЕВ: ${comments.filter(c => c.photoId === photo.id).length}</span></div>
+                <div class="vote-buttons">${currentUser ? (canVote ? `<button class="vote-btn vote-up ${userVote === 1 ? 'vote-active-up' : ''}" onclick="event.stopPropagation(); quickVote('${photo.id}', 1)"><i class="fas fa-plus"></i> ${photo.likes || 0}</button><button class="vote-btn vote-down ${userVote === -1 ? 'vote-active-down' : ''}" onclick="event.stopPropagation(); quickVote('${photo.id}', -1)"><i class="fas fa-minus"></i> ${photo.dislikes || 0}</button>` : `<span style="color:#ff0040; font-size:0.75rem; font-weight:700;">ГОЛОСОВАНИЕ ЗАПРЕЩЕНО</span>`) : `<span style="font-size:0.75rem; color:#8870aa; font-weight:700;">ВОЙДИТЕ ЧТОБЫ ГОЛОСОВАТЬ</span>`}</div>
+                ${modActions}${adminActions}
+            </div>
+            <div class="status-badge ${getBadgeClass(photo.status)}">${getStatusText(photo.status)}</div>
+        </div>`;
+    }
+    
+    // ========== АВТОРИЗАЦИЯ ==========
+    function showAuth() { document.getElementById('app').innerHTML = `<div style="max-width:380px; margin:40px auto; background:#0d0a1a; padding:24px 16px; border:3px solid #6b2fd0; clip-path:polygon(0 0,100% 0,98% 100%,0 100%); text-align:center; box-shadow:0 0 50px rgba(107,47,208,0.2);"><h2 style="font-size:1.2rem; color:#a86eff; text-shadow:0 0 30px rgba(168,110,255,0.3);">TRAIN SPOTTING SITE</h2><div style="background:#0a0715; padding:8px; border:2px solid #3a1a6a; clip-path:polygon(0 0,100% 0,98% 100%,0 100%); margin:12px 0; font-size:0.75rem; text-align:left; color:#8870aa; font-weight:600;"><div><strong style="color:#a86eff;">admin@trainspotting.com</strong> / admin123 (АДМИН)</div><div><strong style="color:#a86eff;">moder@trainspotting.com</strong> / moder123 (МОДЕРАТОР)</div><div><strong style="color:#a86eff;">demo@mail.ru</strong> / demo123 (ПОЛЬЗОВАТЕЛЬ)</div></div><input id="loginEmail" placeholder="EMAIL" style="width:100%; padding:10px; margin:8px 0; background:#0a0715; border:2px solid #3a1a6a; color:#d4c8f0; font-size:0.9rem; clip-path:polygon(0 0,100% 0,98% 100%,0 100%);"><input type="password" id="loginPassword" placeholder="ПАРОЛЬ" style="width:100%; padding:10px; margin:8px 0; background:#0a0715; border:2px solid #3a1a6a; color:#d4c8f0; font-size:0.9rem; clip-path:polygon(0 0,100% 0,98% 100%,0 100%);"><button class="btn btn-success" onclick="doLogin()" style="width:100%;">ВОЙТИ</button><div style="margin-top:12px; cursor:pointer; color:#a86eff; font-size:0.85rem; font-weight:700;" onclick="showRegisterForm()">РЕГИСТРАЦИЯ</div></div>`; }
+    async function doLogin() { let email = document.getElementById('loginEmail').value, password = document.getElementById('loginPassword').value, user = users.find(u => u.email === email && u.password === password); if (user) { currentUser = JSON.parse(JSON.stringify(user)); delete currentUser.password; saveSession(); renderMainApp(); } else alert('НЕВЕРНЫЙ EMAIL ИЛИ ПАРОЛЬ'); }
+    function showRegisterForm() { document.getElementById('app').innerHTML = `<div style="max-width:380px; margin:40px auto; background:#0d0a1a; padding:24px 16px; border:3px solid #6b2fd0; clip-path:polygon(0 0,100% 0,98% 100%,0 100%); box-shadow:0 0 50px rgba(107,47,208,0.2);"><h2 style="font-size:1.2rem; text-align:center; color:#a86eff; text-shadow:0 0 30px rgba(168,110,255,0.3);">РЕГИСТРАЦИЯ</h2><input id="regName" placeholder="ИМЯ" style="width:100%; padding:10px; margin:8px 0; background:#0a0715; border:2px solid #3a1a6a; color:#d4c8f0; font-size:0.9rem; clip-path:polygon(0 0,100% 0,98% 100%,0 100%);"><input id="regEmail" placeholder="EMAIL" style="width:100%; padding:10px; margin:8px 0; background:#0a0715; border:2px solid #3a1a6a; color:#d4c8f0; font-size:0.9rem; clip-path:polygon(0 0,100% 0,98% 100%,0 100%);"><input type="password" id="regPassword" placeholder="ПАРОЛЬ (МИН. 4)" style="width:100%; padding:10px; margin:8px 0; background:#0a0715; border:2px solid #3a1a6a; color:#d4c8f0; font-size:0.9rem; clip-path:polygon(0 0,100% 0,98% 100%,0 100%);"><button class="btn btn-success" onclick="doRegister()" style="width:100%;">ЗАРЕГИСТРИРОВАТЬСЯ</button><div style="margin-top:12px; text-align:center; cursor:pointer; color:#a86eff; font-size:0.85rem; font-weight:700;" onclick="showAuth()">ВОЙТИ</div></div>`; }
+    async function doRegister() { let name = document.getElementById('regName').value.toUpperCase(), email = document.getElementById('regEmail').value, password = document.getElementById('regPassword').value; if (!name || !email || password.length < 4) { alert('ЗАПОЛНИТЕ ВСЕ ПОЛЯ'); return; } if (users.find(u => u.email === email)) { alert('EMAIL УЖЕ ИСПОЛЬЗУЕТСЯ'); return; } let newUser = { id: 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6), name, email, password, role: 'user', banVote: false, banComment: false, bio: '', city: '', website: '', telegram: '', createdAt: Date.now() }; await putToStore('users', newUser); users.push(newUser); alert('РЕГИСТРАЦИЯ УСПЕШНА!'); showAuth(); }
+    function logout() { localStorage.removeItem('mss_user'); currentUser = null; showAuth(); }
+    
+    // ========== ГЛАВНАЯ РЕНДЕРИНГ ==========
+    async function renderMainApp() {
+        if (!currentUser) { showAuth(); return; }
+        updateNotifBadge();
+        let roleBadge = '';
+        if (currentUser.role === 'admin') roleBadge = '<span class="admin-badge">ADMIN</span>';
+        else if (currentUser.role === 'moderator') roleBadge = '<span class="moder-badge">MODERATOR</span>';
+        let banInfo = (!canUserVote(currentUser) && currentUser.role !== 'admin') ? '<span class="banned-badge">ГОЛОСОВАНИЕ ЗАБЛОКИРОВАНО</span>' : '';
+        document.getElementById('app').innerHTML = `<div class="header"><div class="logo-area" onclick="renderHome()"><i class="fas fa-train logo"></i><span class="site-title">TRAIN SPOTTING SITE</span></div><div class="user-info"><span><i class="fas fa-user"></i> ${currentUser.name}</span>${roleBadge}${banInfo}<button class="menu-btn" id="menuToggleBtn"><i class="fas fa-bars"></i><span id="notifBadge" class="notif-badge"></span></button></div></div><div class="side-menu" id="sideMenu"><div class="menu-header"><span>МЕНЮ</span><button id="closeMenuBtn" style="background:none;border:none;color:#a86eff;font-size:1.2rem;cursor:pointer;"><i class="fas fa-times"></i></button></div><ul class="menu-list"><li onclick="showUserProfile('${currentUser.id}')"><i class="fas fa-user"></i> ПРОФИЛЬ</li><li onclick="showStatistics()"><i class="fas fa-chart-line"></i> СТАТИСТИКА</li><li onclick="showUploadForm()"><i class="fas fa-upload"></i> ЗАГРУЗКА</li><li onclick="showJournal()"><i class="fas fa-history"></i> ЖУРНАЛ</li><li onclick="showMyPhotos()"><i class="fas fa-images"></i> МОИ ФОТО</li><li onclick="showSketchGallery()"><i class="fas fa-paint-brush"></i> ФОТОЗАРИСОВКИ</li><li onclick="showContest()"><i class="fas fa-trophy"></i> КОНКУРС</li><li onclick="showNotifications()"><i class="fas fa-bell"></i> УВЕДОМЛЕНИЯ</li><li onclick="showSwitchUserPanel()"><i class="fas fa-exchange-alt"></i> СМЕНИТЬ ПОЛЬЗОВАТЕЛЯ</li>${canModerate(currentUser) ? '<li onclick="showAdminPanel()"><i class="fas fa-cogs"></i> МОДЕРАЦИЯ</li>' : ''}<li onclick="logout()"><i class="fas fa-sign-out-alt"></i> ВЫХОД</li></ul></div><div class="container" id="mainContent"></div><div id="fullscreenViewer" class="fullscreen-viewer"></div>`;
+        document.getElementById('menuToggleBtn').onclick = () => document.getElementById('sideMenu').classList.add('open');
+        document.getElementById('closeMenuBtn').onclick = () => document.getElementById('sideMenu').classList.remove('open');
+        renderHome();
+    }
+    
+    // ========== ЗАПУСК ==========
+    (async function() {
+        document.getElementById('app').innerHTML = '<div class="loading-overlay"><div class="loading-spinner"></div><div>ЗАГРУЗКА ДАННЫХ...</div></div>';
+        try {
+            await initDB();
+            await loadAllData();
+            renderMainApp();
+        } catch(e) {
+            console.error('ОШИБКА ЗАПУСКА:', e);
+            document.getElementById('app').innerHTML = '<div style="padding:30px;text-align:center;color:#ff0040;font-weight:900;">ОШИБКА ЗАГРУЗКИ ПРИЛОЖЕНИЯ. ПОПРОБУЙТЕ ОБНОВИТЬ СТРАНИЦУ.</div>';
+        }
+    })();
+    
+    // Глобальные функции
+    window.quickVote = quickVote; window.moderatePhoto = moderatePhoto; window.changeUserRole = changeUserRole; window.deleteUser = deleteUser;
+    window.showCityPhotos = showCityPhotos; window.showCountryPhotos = showCountryPhotos; window.showVehiclePage = showVehiclePage;
+    window.showUserProfile = showUserProfile; window.renderHome = renderHome; window.showUploadForm = showUploadForm; window.doUpload = doUpload;
+    window.showAdminPanel = showAdminPanel; window.showJournal = showJournal; window.showMyPhotos = showMyPhotos; window.showStatistics = showStatistics;
+    window.showContest = showContest; window.showNotifications = showNotifications; window.showSwitchUserPanel = showSwitchUserPanel;
+    window.switchToUser = switchToUser; window.logout = logout; window.doLogin = doLogin; window.doRegister = doRegister;
+    window.showAuth = showAuth; window.showRegisterForm = showRegisterForm; window.filterGallery = filterGallery;
+    window.editPhoto = editPhoto; window.deletePhoto = deletePhoto; window.editVehicleProfile = editVehicleProfile;
+    window.requestVehicleEdit = requestVehicleEdit; window.approveEditRequest = approveEditRequest; window.rejectEditRequest = rejectEditRequest;
+    window.toggleBanVote = toggleBanVote; window.toggleBanComment = toggleBanComment;
+    window.editProfile = editProfile; window.showMapForPhoto = showMapForPhoto; window.deleteComment = deleteComment;
+    window.showPhotoPage = showPhotoPage; window.toggleCollapse = toggleCollapse; window.addPhotoPageComment = addPhotoPageComment;
+    window.showSketchGallery = showSketchGallery; window.showRandomPhoto = showRandomPhoto; window.showModelStats = showModelStats;
+</script>
+</body>
+</html>
